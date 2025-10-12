@@ -1,0 +1,30 @@
+{
+  "name": "DicePrimeBot",
+  "version": "1.0.0",
+  "description": "A composite assistant that orchestrates tasks to roll dice (using its local 'roll_agent') and check prime numbers (using a remote 'prime_agent'). It serves as the main command router for both functionalities.",
+  "url": "http://local-main-agent:8080/",
+  "capabilities": {
+  },
+  "skills": [
+    {
+      "id": "dice_prime_orchestration",
+      "name": "Dice and Prime Orchestrator",
+      "description": "Processes complex requests, coordinating the dice rolling tool/agent and the remote prime checking agent.",
+      "tags": ["math", "logic", "delegation"]
+    },
+    {
+      "id": "roll_dice",
+      "name": "Dice Rolling Service",
+      "description": "Direct service for rolling a die of any specified size.",
+      "tags": ["dice", "tool"]
+    },
+    {
+      "id": "check_prime",
+      "name": "Prime Number Checker",
+      "description": "Verifies if an integer is a prime number by delegating to an external A2A service.",
+      "tags": ["math", "external"]
+    }
+  ],
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain"]
+}

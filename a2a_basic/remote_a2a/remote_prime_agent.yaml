@@ -1,0 +1,17 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: remote-prime-agent
+spec:
+  description: This agent can check prime
+  type: BYO
+  byo:
+    deployment:
+      image: 10.140.0.2:5001/remote_prime_agent:latest
+      imagePullPolicy: Always
+      env:
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: kagent-google
+              key: GOOGLE_API_KEY

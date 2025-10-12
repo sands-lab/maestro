@@ -1,0 +1,18 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: basic-agent
+  namespace: kagent
+spec:
+  description: This agent can do anything.
+  type: BYO
+  byo:
+    deployment:
+      image: 10.140.0.2:5001/my-byo:latest
+      imagePullPolicy: Always
+      env:
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: kagent-google
+              key: GOOGLE_API_KEY
