@@ -30,3 +30,7 @@ TABLE_ID = os.getenv("TABLE_ID", "shoe_items")
 DISABLE_WEB_DRIVER = int(os.getenv("DISABLE_WEB_DRIVER", "0"))
 WHL_FILE_NAME = os.getenv("ADK_WHL_FILE", "")
 STAGING_BUCKET = os.getenv("STAGING_BUCKET", "")
+
+USE_LITELLM = int(os.getenv("USE_LITELLM", "0"))
+OLLAMA_API_BASE = os.getenv("OLLAMA_API_BASE", "http://10.68.186.140:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "ollama/command-r-plus:latest")

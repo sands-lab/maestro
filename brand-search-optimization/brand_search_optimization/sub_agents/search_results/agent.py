@@ -26,6 +26,9 @@ from google.genai import types
 from PIL import Image
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from google.adk.models.lite_llm import LiteLlm
+import litellm
+litellm._turn_on_debug()
 
 from ...shared_libraries import constants
 from . import prompt
@@ -243,9 +246,15 @@ def analyze_webpage_and_determine_action(
     """
     return analysis_prompt
 
+if constants.USE_LITELLM:
+    llm = LiteLlm(
+        model=constants.OLLAMA_MODEL,
+        api_base=constants.OLLAMA_API_BASE)
+else:
+    llm = constants.MODEL
 
 search_results_agent = Agent(
-    model=constants.MODEL,
+    model=llm,
     name="search_results_agent",
     description="Get top 3 search results info for a keyword using web browsing",
     instruction=prompt.SEARCH_RESULT_AGENT_PROMPT,

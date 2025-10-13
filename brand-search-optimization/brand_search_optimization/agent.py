@@ -21,12 +21,21 @@ from .shared_libraries import constants
 from .sub_agents.comparison.agent import comparison_root_agent
 from .sub_agents.search_results.agent import search_results_agent
 from .sub_agents.keyword_finding.agent import keyword_finding_agent
+from google.adk.models.lite_llm import LiteLlm
+import litellm
+litellm._turn_on_debug()
 
 from . import prompt
 
+if constants.USE_LITELLM:
+    llm = LiteLlm(
+        model=constants.OLLAMA_MODEL,
+        api_base=constants.OLLAMA_API_BASE)
+else:
+    llm = constants.MODEL
 
 root_agent = Agent(
-    model=constants.MODEL,
+    model=llm,
     name=constants.AGENT_NAME,
     description=constants.DESCRIPTION,
     instruction=prompt.ROOT_PROMPT,
