@@ -1,0 +1,22 @@
+{
+  "name": "Content Writer Agent",
+  "description": "Writes content based on a provided plan or simple story abstraction.",
+  "url": "http://content-writer-agent:8080",
+  "version": "1.0.0",
+  "defaultInputModes": ["text", "text/plain"],
+  "defaultOutputModes": ["text", "text/plain"],
+  "capabilities": {
+    "streaming": true
+  },
+  "skills": [
+    {
+      "id": "content_writer",
+      "name": "Writes content",
+      "description": "Writes content based on a provided plan or simple story abstraction.",
+      "tags": ["write", "content"],
+      "examples": [
+        "Write a blog post about the benefits of learning Java."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+# Ignore compiled python files
+__pycache__/
+*.pyc
+
+# Ignore uv environment files
+.env
+.venv
+
+# Ignore other temporary or system files as needed
+/logs

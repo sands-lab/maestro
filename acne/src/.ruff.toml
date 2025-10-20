@@ -1,0 +1,30 @@
+# Ruff is an extremely fast Python linter and formatter, written in Rust.
+# It can replace Flake8, isort, pydocstyle, and more, all in one go.
+# Find all rules here: https://docs.astral.sh/ruff/rules/
+
+# Specify the version of Python the code should be compatible with.
+target-version = "py310"
+
+# Set the line length.
+line-length = 88
+
+# Extend with additional rule sets.
+lint.extend-select = ["I", "E", "W", "F", "C", "N", "D", "ANN", "B", "TID", "PT", "ERA", "TCH", "ICN"]
+lint.ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107", "D200", "D205", "D400", "D415", "ANN002", "ANN003", "ANN201", "ANN401"]
+
+[lint.isort]
+combine-as-imports = true
+known-local-folder = ["src", "coordinator"]
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.per-file-ignores]
+# Ignore D-series rules for test files.
+"**/tests/**.py" = ["D"]
+# Ignore type-checking related errors in mypy stub files.
+"**/*.pyi" = ["TCH", "ANN"]
+
+[lint.flake8-type-checking]
+runtime-evaluated-base-classes = ["google.adk.Agent", "pydantic.BaseModel"]
+runtime-evaluated-decorators = ["pydantic.validate_call"]
