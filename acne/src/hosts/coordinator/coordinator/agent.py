@@ -28,6 +28,7 @@ from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools.tool_context import ToolContext
 
+from google.adk.models.lite_llm import LiteLlm
 
 load_dotenv()
 
@@ -132,6 +133,27 @@ class CoordinatorAgent:
     def create_agent(self) -> Agent:
         """Create an instance of the CoordinatorAgent."""
         model_id = 'gemini-2.5-flash'
+
+        if os.getenv("PROVIDER") == "google":
+            llm = "gemini-2.5-flash"
+        elif os.getenv("PROVIDER") == "aliyun" or os.getenv("PROVIDER") == "ollama":
+            if os.getenv("PROVIDER") == "aliyun":
+                api_key = os.getenv("ALIYUN_API_KEY")
+                api_base = os.getenv("API_BASE")
+            else:
+                api_key = os.getenv("OLLAMA_API_KEY")
+                api_base = os.getenv("OLLAMA_API_BASE")
+
+            llm = LiteLlm(
+                model=os.getenv("MODEL", "gemini-2.5-flash"),
+                api_base=api_base,
+                api_key=api_key
+            )
+        else:
+            raise ValueError("Unsupported PROVIDER. Please set PROVIDER to 'google', 'aliyun', or 'ollama'.")
+
+        model_id = llm
+        
         print(f'Using hardcoded model: {model_id}')
         return Agent(
             model=model_id,
