@@ -29,7 +29,9 @@ from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools.tool_context import ToolContext
 
 from google.adk.models.lite_llm import LiteLlm
+import litellm
 
+litellm._turn_on_debug()
 load_dotenv()
 
 
@@ -155,18 +157,28 @@ class CoordinatorAgent:
         model_id = llm
         
         print(f'Using hardcoded model: {model_id}')
-        return Agent(
-            model=model_id,
-            name='Routing_agent',
-            instruction=self.root_instruction,
-            before_model_callback=self.before_model_callback,
-            description=(
-                'This coordinator agent orchestrates the content planning and content writing agents'
-            ),
-            tools=[
-                self.send_message,
-            ],
-        )
+
+        try:
+            return Agent(
+                model=model_id,
+                name='Routing_agent',
+                instruction=self.root_instruction,
+                before_model_callback=self.before_model_callback,
+                description=(
+                    'This coordinator agent orchestrates the content planning and content writing agents'
+                ),
+                tools=[
+                    self.send_message,
+                ],
+            )
+        except Exception as e:
+            print("=" * 80)
+            print(f"❌ Error creating Agent: {type(e).__name__}")
+            print(f"Error message: {str(e)}")
+            if hasattr(e, '__cause__') and e.__cause__:
+                print(f"Caused by: {type(e.__cause__).__name__}: {str(e.__cause__)}")
+            print("=" * 80)
+            raise
 
     def root_instruction(self, context: ReadonlyContext) -> str:
         """Generate the root instruction for the CoordinatorAgent."""
