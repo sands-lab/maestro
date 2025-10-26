@@ -1,0 +1,158 @@
+{
+  "trace": {
+    "freeplan_truncated": false,
+    "trace_id": "77a035853b11e660976af88f5d95fd9f",
+    "root_service_name": "agentops",
+    "root_span_name": "default.session",
+    "start_time": "2025-10-26T15:45:36.582396+00:00",
+    "end_time": "2025-10-26T15:45:36.683723+00:00",
+    "duration": 101327565,
+    "span_count": 2,
+    "error_count": 0,
+    "tags": [],
+    "total_cost": 0.0000032
+  },
+  "spans": [
+    {
+      "freeplan_truncated": false,
+      "span_id": "5c2c6e35e7373657",
+      "parent_span_id": "",
+      "span_name": "default.session",
+      "span_kind": "Internal",
+      "span_type": "other",
+      "service_name": "agentops",
+      "start_time": "2025-10-26T15:45:36.582396+00:00",
+      "end_time": "2025-10-26T15:45:37.747271+00:00",
+      "duration": 1164875550,
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {},
+      "resource_attributes": {
+        "ProjectId": "e3a614ee-ea2e-40b1-946a-2ac15f34aa0e",
+        "agentops": {
+          "project": {
+            "id": "e3a614ee-ea2e-40b1-946a-2ac15f34aa0e"
+          }
+        },
+        "host": {
+          "name": "5f65ad67eda1"
+        },
+        "imported_libraries": "[\"asyncio\",\"agentops\"]",
+        "os": {
+          "type": "linux"
+        },
+        "service": {
+          "name": "agentops"
+        }
+      },
+      "span_attributes": {
+        "agentops": {
+          "session": {
+            "end_state": "Shutdown"
+          },
+          "span": {
+            "kind": "session"
+          }
+        },
+        "operation": {
+          "name": "default"
+        }
+      },
+      "event_timestamps": [],
+      "event_names": [],
+      "event_attributes": [],
+      "link_trace_ids": [],
+      "link_span_ids": [],
+      "link_trace_states": [],
+      "link_attributes": [],
+      "metrics": null
+    },
+    {
+      "freeplan_truncated": false,
+      "span_id": "3006a6b62aa3ad77",
+      "parent_span_id": "5c2c6e35e7373657",
+      "span_name": "openai.chat.completion",
+      "span_kind": "Client",
+      "span_type": "request",
+      "service_name": "agentops",
+      "start_time": "2025-10-26T15:45:36.683724+00:00",
+      "end_time": "2025-10-26T15:45:37.744577+00:00",
+      "duration": 1060853388,
+      "status_code": "OK",
+      "status_message": "",
+      "attributes": {},
+      "resource_attributes": {
+        "ProjectId": "e3a614ee-ea2e-40b1-946a-2ac15f34aa0e",
+        "agentops": {
+          "project": {
+            "id": "e3a614ee-ea2e-40b1-946a-2ac15f34aa0e"
+          }
+        },
+        "host": {
+          "name": "5f65ad67eda1"
+        },
+        "imported_libraries": "[\"asyncio\",\"agentops\"]",
+        "os": {
+          "type": "linux"
+        },
+        "service": {
+          "name": "agentops"
+        }
+      },
+      "span_attributes": {
+        "gen_ai": {
+          "completion": [
+            {
+              "content": "The capital of France is **Paris**.\n",
+              "finish_reason": "stop",
+              "role": "assistant"
+            }
+          ],
+          "prompt": [
+            {
+              "content": "What is the capital of France?",
+              "role": "user"
+            }
+          ],
+          "request": {
+            "model": "gemini-2.0-flash-lite",
+            "streaming": "false",
+            "type": "chat"
+          },
+          "response": {
+            "id": "IUL-aIn2DODE28oPmb_iqQY",
+            "model": "gemini-2.0-flash-lite"
+          },
+          "system": "OpenAI",
+          "usage": {
+            "completion_cost": "0.0000027",
+            "completion_tokens": "9",
+            "prompt_cost": "5.25e-7",
+            "prompt_tokens": "7",
+            "total_tokens": "16"
+          }
+        }
+      },
+      "event_timestamps": [],
+      "event_names": [],
+      "event_attributes": [],
+      "link_trace_ids": [],
+      "link_span_ids": [],
+      "link_trace_states": [],
+      "link_attributes": [],
+      "metrics": {
+        "total_tokens": 16,
+        "prompt_tokens": 7,
+        "completion_tokens": 9,
+        "cache_read_input_tokens": 0,
+        "reasoning_tokens": 0,
+        "success_tokens": 16,
+        "fail_tokens": 0,
+        "indeterminate_tokens": 0,
+        "prompt_cost": "0.0000005",
+        "completion_cost": "0.0000027",
+        "total_cost": "0.0000032"
+      }
+    }
+  ]
+}

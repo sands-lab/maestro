@@ -1,0 +1,141 @@
+{
+  "trace": {
+    "freeplan_truncated": false,
+    "trace_id": "dd99ff041b8d581b3939cdadfb5836a2",
+    "root_service_name": "agentops",
+    "root_span_name": "default.session",
+    "start_time": "2025-10-26T15:06:36.981676+00:00",
+    "end_time": "2025-10-26T15:06:36.983389+00:00",
+    "duration": 1713962,
+    "span_count": 2,
+    "error_count": 0,
+    "tags": [],
+    "total_cost": 0
+  },
+  "spans": [
+    {
+      "freeplan_truncated": false,
+      "span_id": "60f45b5cbdfca9a5",
+      "parent_span_id": "",
+      "span_name": "default.session",
+      "span_kind": "Internal",
+      "span_type": "other",
+      "service_name": "agentops",
+      "start_time": "2025-10-26T15:06:36.981676+00:00",
+      "end_time": "2025-10-26T15:06:39.532524+00:00",
+      "duration": 2550848586,
+      "status_code": "UNSET",
+      "status_message": "",
+      "attributes": {},
+      "resource_attributes": {
+        "ProjectId": "e3a614ee-ea2e-40b1-946a-2ac15f34aa0e",
+        "agentops": {
+          "project": {
+            "id": "e3a614ee-ea2e-40b1-946a-2ac15f34aa0e"
+          }
+        },
+        "host": {
+          "name": "5f65ad67eda1"
+        },
+        "imported_libraries": "[\"agentops\"]",
+        "os": {
+          "type": "linux"
+        },
+        "service": {
+          "name": "agentops"
+        }
+      },
+      "span_attributes": {
+        "agentops": {
+          "session": {
+            "end_state": "Shutdown"
+          },
+          "span": {
+            "kind": "session"
+          }
+        },
+        "operation": {
+          "name": "default"
+        }
+      },
+      "event_timestamps": [],
+      "event_names": [],
+      "event_attributes": [],
+      "link_trace_ids": [],
+      "link_span_ids": [],
+      "link_trace_states": [],
+      "link_attributes": [],
+      "metrics": null
+    },
+    {
+      "freeplan_truncated": false,
+      "span_id": "f43c074fdddbf5d6",
+      "parent_span_id": "60f45b5cbdfca9a5",
+      "span_name": "agno.agent.run.agent",
+      "span_kind": "Internal",
+      "span_type": "agent",
+      "service_name": "agentops",
+      "start_time": "2025-10-26T15:06:36.983390+00:00",
+      "end_time": "2025-10-26T15:06:39.526865+00:00",
+      "duration": 2543475939,
+      "status_code": "OK",
+      "status_message": "",
+      "attributes": {},
+      "resource_attributes": {
+        "ProjectId": "e3a614ee-ea2e-40b1-946a-2ac15f34aa0e",
+        "agentops": {
+          "project": {
+            "id": "e3a614ee-ea2e-40b1-946a-2ac15f34aa0e"
+          }
+        },
+        "host": {
+          "name": "5f65ad67eda1"
+        },
+        "imported_libraries": "[\"agentops\"]",
+        "os": {
+          "type": "linux"
+        },
+        "service": {
+          "name": "agentops"
+        }
+      },
+      "span_attributes": {
+        "agent": {
+          "markdown": "True",
+          "model_provider": "Google",
+          "output": "I tucked my daughter into bed and she asked me, \"Daddy, check for monsters under my bed.\" I looked underneath for her, and that's when I saw another pair of eyes staring back at me, whispering, \"Daddy, there's someone on my bed.\"\n",
+          "reasoning": "False",
+          "run_id": "8978a8e9-0491-4689-b54e-7735de494271",
+          "session_id": "da14f6e9-6a04-47d8-8dc0-229f9bc5784b",
+          "stream": "None"
+        },
+        "agentops": {
+          "entity": {
+            "name": "agent"
+          },
+          "span": {
+            "kind": "agent"
+          }
+        },
+        "gen_ai": {
+          "request": {
+            "model": "gemini-2.0-flash",
+            "streaming": "False"
+          },
+          "response": {
+            "model": "gemini-2.0-flash"
+          },
+          "system": "agno"
+        }
+      },
+      "event_timestamps": [],
+      "event_names": [],
+      "event_attributes": [],
+      "link_trace_ids": [],
+      "link_span_ids": [],
+      "link_trace_states": [],
+      "link_attributes": [],
+      "metrics": null
+    }
+  ]
+}
