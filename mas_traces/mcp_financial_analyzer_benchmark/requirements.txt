@@ -1,0 +1,6 @@
+mcp-agent @ git+https://github.com/chenIshi/mcp-agent@feat/trace-collection
+openai>=1.58
+anthropic>=0.39
+opentelemetry-api>=1.27
+opentelemetry-sdk>=1.27
+google-genai>=1.10.0

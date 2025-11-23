@@ -1,0 +1,41 @@
+# Configuration for Stock Analyzer with g-search-mcp
+execution_engine: asyncio
+
+logger:
+  level: info
+  transports: [console]
+  progress_display: true
+
+otel:
+  enabled: true
+  service_name: "financial-analyzer"
+  exporters:
+    - file:
+        path_settings:
+          path_pattern: "logs/financial_analyzer_traces-{unique_id}.jsonl"
+          unique_id: "timestamp"
+          timestamp_format: "%Y%m%d_%H%M%S"
+  sample_rate: 1.0
+
+# MCP server configurations
+mcp:
+  servers:
+    # Fetch server for basic web retrieval
+    fetch:
+      command: "mcp-server-fetch"
+    
+    # Google Search MCP server
+    g-search:
+      command: "g-search-mcp"
+    
+    # Filesystem server for writing reports
+    filesystem:
+      command: "mcp-server-filesystem"
+      args: ["--root", "."]
+
+# Default OpenAI configuration
+# openai:
+#   default_model: gpt-4o
+
+google:
+  default_model: gemini-2.5-flash-lite

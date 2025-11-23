@@ -33,6 +33,13 @@ Key flags:
 
 Console output shows which tourists were matched, their total cost, and summary metrics (assignments, fill rate, etc.). Every run also writes a JSON-lines OpenTelemetry trace under `logs/` so you can diff runs or share artifacts with other benchmark suites.
 
+Use the shared harness to automate multiple passes with a timeout:
+
+```bash
+cd mas_traces
+python run_benchmarks.py --benchmark tourist_scheduler --runs 5 --timeout 120
+```
+
 ## 3. Project layout
 
 ```
@@ -51,4 +58,3 @@ mas_traces/tourist_scheduler_benchmark
 - Add more guides/tourists by editing the JSON files
 - Adjust the greedy strategy in `scheduler/engine.py` to experiment with better scoring heuristics
 - Point observability tools at the emitted trace logs to integrate with your existing OTel pipelines
-

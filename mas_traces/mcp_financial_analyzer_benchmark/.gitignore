@@ -1,0 +1,5 @@
+.venv/
+company_reports/
+logs/
+__pycache__/
+mcp_agent.secrets.yaml
