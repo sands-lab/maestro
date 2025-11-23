@@ -1,0 +1,32 @@
+[
+  {
+    "guide_id": "florence-foodie",
+    "categories": ["food", "culture", "history"],
+    "available_window": {
+      "start": "2025-06-15T09:00:00",
+      "end": "2025-06-15T12:00:00"
+    },
+    "hourly_rate": 140.0,
+    "max_group_size": 4
+  },
+  {
+    "guide_id": "rome-ancient",
+    "categories": ["history", "architecture"],
+    "available_window": {
+      "start": "2025-06-15T10:00:00",
+      "end": "2025-06-15T13:00:00"
+    },
+    "hourly_rate": 160.0,
+    "max_group_size": 3
+  },
+  {
+    "guide_id": "milan-fashion",
+    "categories": ["fashion", "shopping", "design"],
+    "available_window": {
+      "start": "2025-06-15T11:00:00",
+      "end": "2025-06-15T14:00:00"
+    },
+    "hourly_rate": 180.0,
+    "max_group_size": 2
+  }
+]

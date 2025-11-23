@@ -1,0 +1,34 @@
+[
+  {
+    "tourist_id": "alice-adventure",
+    "availability": [
+      {"start": "2025-06-15T08:30:00", "end": "2025-06-15T12:30:00"}
+    ],
+    "budget": 400.0,
+    "preferences": ["history", "culture"]
+  },
+  {
+    "tourist_id": "ben-foodie",
+    "availability": [
+      {"start": "2025-06-15T09:30:00", "end": "2025-06-15T13:30:00"}
+    ],
+    "budget": 250.0,
+    "preferences": ["food", "shopping"]
+  },
+  {
+    "tourist_id": "cora-fashion",
+    "availability": [
+      {"start": "2025-06-15T10:30:00", "end": "2025-06-15T15:00:00"}
+    ],
+    "budget": 500.0,
+    "preferences": ["fashion", "design"]
+  },
+  {
+    "tourist_id": "diego-budget",
+    "availability": [
+      {"start": "2025-06-15T09:00:00", "end": "2025-06-15T11:00:00"}
+    ],
+    "budget": 120.0,
+    "preferences": ["history"]
+  }
+]
