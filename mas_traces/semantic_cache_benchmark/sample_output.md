@@ -31,5 +31,6 @@ Average cache_miss latency: 38.5 ms
 Average llm_call latency: 2150.1 ms
 ```
 
-Use this output as a reference when verifying environment setup or making changes to the benchmark script.
+Each run now also produces a trace file like `logs/run_20250212_091530.log` that contains OpenTelemetry span dumps for the warm-up, Redis load, and every benchmark query. Tail one of those files if you prefer text logs over console output.
 
+Use this output as a reference when verifying environment setup or making changes to the benchmark script.

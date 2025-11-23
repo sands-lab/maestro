@@ -27,6 +27,7 @@ Additional prerequisites:
 
 - A running Redis instance (e.g., `redis-stack-server`)
 - An OpenAI API key exported as `OPENAI_API_KEY`
+- (Optional) The benchmark now emits OpenTelemetry traces, so the only extra requirement is ensuring `logs/` is writable
 
 ## 2. Run the benchmark
 
@@ -44,7 +45,7 @@ CLI flags:
 | `--ttl-seconds` | TTL applied to Redis cache entries (default `86400`) |
 | `--skip-redis` | Only run the in-memory cache warm-up |
 
-The script prints the in-memory cache behavior, loads the full FAQ dataset into Redis, and then replays benchmark questions. Cache misses trigger an OpenAI call whose latency is tracked by `PerfEval`. A sample console log is available in `sample_output.md`.
+The script prints the in-memory cache behavior, loads the full FAQ dataset into Redis, and then replays benchmark questions. Cache misses trigger an OpenAI call whose latency is tracked by `PerfEval`. Every execution also writes a run-specific OpenTelemetry trace (text format) under `logs/` so you can archive or diff runs easily. A sample console log is available in `sample_output.md`.
 
 ## 3. Project layout
 
@@ -52,6 +53,7 @@ The script prints the in-memory cache behavior, loads the full FAQ dataset into 
 mas_traces/semantic_cache_benchmark
 ├── cache/                 # Helper modules extracted from the notebook
 ├── data/                  # FAQ + benchmark query CSV files
+├── logs/                  # OpenTelemetry span dumps (gitignored)
 ├── main.py                # End-to-end benchmark runner
 ├── requirements.txt       # Python dependencies
 └── sample_output.md       # Captured run to verify expectations
@@ -64,4 +66,3 @@ mas_traces/semantic_cache_benchmark
 - Point `--redis-url` to a managed Redis deployment to test remote latency
 
 This structure makes it easy to plug the benchmark into CI, perf suites, or MCP-style demos without relying on Jupyter notebooks.
-
