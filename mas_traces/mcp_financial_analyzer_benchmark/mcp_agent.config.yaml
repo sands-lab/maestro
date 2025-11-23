@@ -34,8 +34,8 @@ mcp:
       args: ["--root", "."]
 
 # Default OpenAI configuration
-# openai:
-#   default_model: gpt-4o
+openai:
+  default_model: gpt-4o
 
 google:
   default_model: gemini-2.5-flash-lite

@@ -5,10 +5,13 @@ An integrated financial analysis tool using comprehensive, structured agent prom
 from the portfolio analyzer example.
 """
 
+import argparse
 import asyncio
+import importlib
 import os
 import sys
 from datetime import datetime
+from typing import Any
 from mcp_agent.app import MCPApp
 from mcp_agent.config import (
     GoogleSettings,
@@ -20,8 +23,6 @@ from mcp_agent.config import (
 from mcp_agent.agents.agent import Agent
 from mcp_agent.workflows.orchestrator.orchestrator import Orchestrator
 from mcp_agent.workflows.llm.augmented_llm import RequestParams
-# from mcp_agent.workflows.llm.augmented_llm_openai import OpenAIAugmentedLLM
-from mcp_agent.workflows.llm.augmented_llm_google import GoogleAugmentedLLM
 from mcp_agent.workflows.evaluator_optimizer.evaluator_optimizer import (
     EvaluatorOptimizerLLM,
     QualityRating,
@@ -30,7 +31,115 @@ from mcp_agent.workflows.evaluator_optimizer.evaluator_optimizer import (
 # Configuration values
 OUTPUT_DIR = "company_reports"
 TRACE_LOG_DIR = "logs"
-COMPANY_NAME = "Apple" if len(sys.argv) <= 1 else sys.argv[1]
+
+LLM_BACKEND_REGISTRY = {
+    "google": {
+        "module": "mcp_agent.workflows.llm.augmented_llm_google",
+        "class": "GoogleAugmentedLLM",
+        "config_attr": "google",
+    },
+    "openai": {
+        "module": "mcp_agent.workflows.llm.augmented_llm_openai",
+        "class": "OpenAIAugmentedLLM",
+        "config_attr": "openai",
+    },
+    "anthropic": {
+        "module": "mcp_agent.workflows.llm.augmented_llm_anthropic",
+        "class": "AnthropicAugmentedLLM",
+        "config_attr": "anthropic",
+    },
+}
+
+LLM_BACKEND_ALIASES = {
+    "gemini": "google",
+}
+
+
+def _parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run the MCP financial analyzer with a selectable LLM backend."
+    )
+    parser.add_argument(
+        "company",
+        nargs="?",
+        default=os.getenv("FINANCIAL_ANALYZER_COMPANY", "Apple"),
+        help="Company ticker/name to analyze (default: Apple).",
+    )
+    parser.add_argument(
+        "--llm-backend",
+        default=os.getenv("FINANCIAL_ANALYZER_LLM_BACKEND", "google"),
+        help=(
+            "LLM backend alias (google, gemini, openai, anthropic) or "
+            "a fully-qualified import path in the form 'module.path:ClassName'."
+        ),
+    )
+    parser.add_argument(
+        "--llm-model",
+        default=os.getenv("FINANCIAL_ANALYZER_LLM_MODEL"),
+        help="Optional model override for the selected backend.",
+    )
+    return parser.parse_args(argv)
+
+
+CLI_ARGS = _parse_cli_args()
+COMPANY_NAME = CLI_ARGS.company
+LLM_BACKEND = CLI_ARGS.llm_backend
+LLM_MODEL_OVERRIDE = CLI_ARGS.llm_model
+
+
+def _canonical_backend_name(backend: str | None) -> str | None:
+    if not backend:
+        return None
+    backend = backend.strip()
+    if not backend or ":" in backend:
+        return None
+    normalized = backend.lower()
+    return LLM_BACKEND_ALIASES.get(normalized, normalized)
+
+
+def _load_llm_factory(backend: str | None):
+    """
+    Return the LLM factory class + canonical backend key (if known).
+    Supports either friendly aliases or fully-qualified module paths.
+    """
+    backend = (backend or "google").strip()
+    if not backend:
+        backend = "google"
+
+    if ":" in backend:
+        module_name, class_name = backend.split(":", 1)
+        if not module_name or not class_name:
+            raise ValueError(
+                "Custom LLM backend must be in the form 'module.path:ClassName'"
+            )
+        module = importlib.import_module(module_name)
+        return getattr(module, class_name), None
+
+    canonical = _canonical_backend_name(backend)
+    if canonical not in LLM_BACKEND_REGISTRY:
+        raise ValueError(
+            f"Unknown LLM backend '{backend}'. "
+            "Use one of google/gemini/openai/anthropic or provide module.path:ClassName."
+        )
+
+    target = LLM_BACKEND_REGISTRY[canonical]
+    module = importlib.import_module(target["module"])
+    return getattr(module, target["class"]), canonical
+
+
+def _default_model_for_backend(config: Any, canonical_backend: str | None) -> str | None:
+    if not canonical_backend:
+        return None
+    target = LLM_BACKEND_REGISTRY.get(canonical_backend)
+    if not target:
+        return None
+    config_attr = target.get("config_attr")
+    if not config_attr or not hasattr(config, config_attr):
+        return None
+    provider_config = getattr(config, config_attr, None)
+    if not provider_config:
+        return None
+    return getattr(provider_config, "default_model", None)
 
 
 def _is_truthy(value: str | None, default: bool = True) -> bool:
@@ -88,6 +197,27 @@ async def main():
         context = analyzer_app.context
         logger = analyzer_app.logger
         _configure_google_rate_limit(context.config, logger)
+
+        try:
+            llm_factory, canonical_backend = _load_llm_factory(LLM_BACKEND)
+        except (ImportError, AttributeError, ValueError) as err:
+            logger.error(f"Unable to load LLM backend '{LLM_BACKEND}': {err}")
+            return False
+
+        model_name = LLM_MODEL_OVERRIDE or _default_model_for_backend(
+            context.config, canonical_backend
+        )
+        if not model_name:
+            logger.error(
+                f"No model configured for backend '{LLM_BACKEND}'. "
+                "Use --llm-model to provide one."
+            )
+            return False
+
+        logger.info(
+            f"Using LLM backend '{LLM_BACKEND}' "
+            f"(canonical: {canonical_backend or 'custom'}) with model '{model_name}'"
+        )
 
         # Configure filesystem server to use current directory
         if "filesystem" in context.config.mcp.servers:
@@ -266,7 +396,7 @@ async def main():
         research_quality_controller = EvaluatorOptimizerLLM(
             optimizer=research_agent,
             evaluator=research_evaluator,
-            llm_factory=GoogleAugmentedLLM,
+            llm_factory=llm_factory,
             min_rating=RESEARCH_MIN_RATING,
             max_refinements=RESEARCH_MAX_REFINEMENTS,
         )
@@ -505,7 +635,7 @@ async def main():
         pipeline_agents.append(report_writer)
 
         orchestrator = Orchestrator(
-            llm_factory=GoogleAugmentedLLM,
+            llm_factory=llm_factory,
             available_agents=pipeline_agents,
             plan_type="iterative" if SANITY_MODE else "full",
         )
@@ -546,7 +676,7 @@ async def main():
         logger.info("Starting the stock analysis workflow")
         try:
             orchestrator_params = RequestParams(
-                model="gemini-2.0-flash",
+                model=model_name,
                 maxTokens=2048 if SANITY_MODE else 4096,
                 max_iterations=ORCHESTRATOR_MAX_ITERATIONS,
                 temperature=0.4 if SANITY_MODE else 0.7,
