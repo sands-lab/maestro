@@ -44,6 +44,7 @@ CLI flags:
 | `--llm-model` | Model used for cache misses (default `gpt-4o-mini`) |
 | `--ttl-seconds` | TTL applied to Redis cache entries (default `86400`) |
 | `--skip-redis` | Only run the in-memory cache warm-up |
+| `--llm-rate-limit` | Optional LLM calls per minute throttle (same via `BENCHMARK_LLM_REQUESTS_PER_MIN`) |
 
 The script prints the in-memory cache behavior, loads the full FAQ dataset into Redis, and then replays benchmark questions. Cache misses trigger an OpenAI call whose latency is tracked by `PerfEval`. Every execution also writes a run-specific OpenTelemetry trace (text format) under `logs/` so you can archive or diff runs easily. Use `python ../run_benchmarks.py --benchmark semantic_cache --runs 3` if you want the shared harness to execute repeated runs with timeouts. A sample console log is available in `sample_output.md`.
 

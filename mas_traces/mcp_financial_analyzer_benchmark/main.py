@@ -40,6 +40,32 @@ def _is_truthy(value: str | None, default: bool = True) -> bool:
     return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
+def _configure_google_rate_limit(config, logger):
+    """Apply optional rate limiting overrides from environment variables."""
+    google_config = getattr(config, "google", None)
+    if not google_config:
+        return
+
+    raw_requests = os.getenv("BENCHMARK_LLM_REQUESTS_PER_MIN") or os.getenv(
+        "GOOGLE_RATE_LIMIT_REQUESTS"
+    )
+    raw_period = os.getenv("BENCHMARK_LLM_RATE_PERIOD") or os.getenv(
+        "GOOGLE_RATE_LIMIT_PERIOD_SECONDS"
+    )
+
+    if raw_requests:
+        try:
+            google_config.rate_limit_requests = int(float(raw_requests))
+        except ValueError:
+            logger.warning("Invalid BENCHMARK_LLM_REQUESTS_PER_MIN value '%s'", raw_requests)
+
+    if raw_period:
+        try:
+            google_config.rate_limit_period_seconds = float(raw_period)
+        except ValueError:
+            logger.warning("Invalid BENCHMARK_LLM_RATE_PERIOD value '%s'", raw_period)
+
+
 SANITY_MODE = _is_truthy(os.getenv("FINANCIAL_ANALYZER_SANITY_MODE"), default=True)
 NEWS_ITEMS_REQUIRED = 2 if SANITY_MODE else 5
 RESEARCH_MAX_REFINEMENTS = 1 if SANITY_MODE else 3
@@ -61,6 +87,7 @@ async def main():
     async with app.run() as analyzer_app:
         context = analyzer_app.context
         logger = analyzer_app.logger
+        _configure_google_rate_limit(context.config, logger)
 
         # Configure filesystem server to use current directory
         if "filesystem" in context.config.mcp.servers:

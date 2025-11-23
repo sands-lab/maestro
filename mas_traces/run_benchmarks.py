@@ -6,6 +6,7 @@ import argparse
 import subprocess
 import sys
 import time
+import os
 from pathlib import Path
 from typing import Dict, List
 
@@ -45,17 +46,29 @@ def list_benchmarks() -> None:
         print(f" - {key}")
 
 
-def run_once(name: str, bench: BenchmarkConfig, timeout: int, run_number: int) -> int:
+def run_once(
+    name: str,
+    bench: BenchmarkConfig,
+    timeout: int,
+    run_number: int,
+    env_overrides: Dict[str, str],
+) -> int:
     bench_path = bench["path"]
     log_dir = bench["log_dir"]
     command = bench["command"]
 
     log_dir.mkdir(exist_ok=True, parents=True)
     before = {p.name for p in log_dir.iterdir() if p.is_file()}
+    env = os.environ.copy()
+    env.update(env_overrides)
+    if env_overrides.get("BENCHMARK_LLM_REQUESTS_PER_MIN") and name == "mcp_financial":
+        env.setdefault("GOOGLE_RATE_LIMIT_REQUESTS", env_overrides["BENCHMARK_LLM_REQUESTS_PER_MIN"])
+        if env_overrides.get("BENCHMARK_LLM_RATE_PERIOD"):
+            env.setdefault("GOOGLE_RATE_LIMIT_PERIOD_SECONDS", env_overrides["BENCHMARK_LLM_RATE_PERIOD"])
 
     print(f"\n[{name}] Run {run_number}: executing {' '.join(command)} (timeout={timeout}s)")
     start = time.perf_counter()
-    process = subprocess.Popen(command, cwd=bench_path)  # noqa: S603, S607
+    process = subprocess.Popen(command, cwd=bench_path, env=env)  # noqa: S603, S607
 
     timed_out = False
     try:
@@ -96,6 +109,18 @@ def parse_args() -> argparse.Namespace:
         help="Timeout (in seconds) per run. Processes are SIGKILLed on timeout.",
     )
     parser.add_argument("--list", action="store_true", help="List available benchmarks and exit.")
+    parser.add_argument(
+        "--llm-rate-limit",
+        type=float,
+        default=None,
+        help="Optional LLM requests-per-minute ceiling applied to compatible benchmarks.",
+    )
+    parser.add_argument(
+        "--llm-rate-period",
+        type=float,
+        default=60.0,
+        help="Window size (seconds) used when enforcing the LLM rate limit.",
+    )
     return parser.parse_args()
 
 
@@ -108,6 +133,12 @@ def main() -> None:
     names = args.benchmarks or list(BENCHMARKS.keys())
     exit_code = 0
 
+    llm_overrides: Dict[str, str] = {}
+    if args.llm_rate_limit:
+        llm_overrides["BENCHMARK_LLM_REQUESTS_PER_MIN"] = str(args.llm_rate_limit)
+        if args.llm_rate_period:
+            llm_overrides["BENCHMARK_LLM_RATE_PERIOD"] = str(args.llm_rate_period)
+
     for name in names:
         bench = BENCHMARKS[name]
         if not bench["path"].exists():
@@ -115,11 +146,10 @@ def main() -> None:
             exit_code = 1
             continue
         for run in range(1, args.runs + 1):
-            exit_code |= run_once(name, bench, args.timeout, run)
+            exit_code |= run_once(name, bench, args.timeout, run, llm_overrides)
 
     sys.exit(exit_code)
 
 
 if __name__ == "__main__":
     main()
-

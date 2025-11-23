@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Optional, Sequence, Tuple
-
-import json
 
 import numpy as np
 import redis
@@ -92,6 +92,7 @@ class BenchmarkSettings:
     llm_model: str
     ttl_seconds: int
     skip_redis: bool = False
+    llm_rate_limit: Optional[float] = None
 
 
 class FileSpanExporter(SpanExporter):
@@ -139,6 +140,27 @@ def setup_tracer() -> tuple[trace.Tracer, Path, TracerProvider]:
     return tracer, log_path, provider
 
 
+class RateLimiter:
+    """Simple sleep-based rate limiter for LLM calls."""
+
+    def __init__(self, calls_per_minute: Optional[float]) -> None:
+        if calls_per_minute and calls_per_minute > 0:
+            self.min_interval = 60.0 / calls_per_minute
+        else:
+            self.min_interval = None
+        self._last_call = 0.0
+
+    def wait(self) -> None:
+        if not self.min_interval:
+            return
+        now = time.monotonic()
+        next_allowed = self._last_call + self.min_interval
+        if next_allowed > now:
+            time.sleep(next_allowed - now)
+            now = time.monotonic()
+        self._last_call = now
+
+
 class SemanticCacheBenchmark:
     """Orchestrates the flow from notebook steps to a runnable script."""
 
@@ -147,6 +169,7 @@ class SemanticCacheBenchmark:
         self.data = FAQDataContainer()
         self.in_memory_cache = InMemorySemanticCache(self.data.faq_df)
         self.tracer = tracer
+        self.rate_limiter = RateLimiter(settings.llm_rate_limit)
         self._demo_queries = [
             "Is it possible to get a refund?",
             "I want my money back",
@@ -307,6 +330,7 @@ class SemanticCacheBenchmark:
                             "Cache miss -> querying LLM %s", self.settings.llm_model
                         )
                         perf_eval.start()
+                        self.rate_limiter.wait()
                         response = self._get_llm_response(llm, question)
                         perf_eval.tick("llm_call")
                         perf_eval.record_llm_call(
@@ -360,14 +384,29 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> BenchmarkSettings:
         action="store_true",
         help="Only run the in-memory cache demo.",
     )
+    parser.add_argument(
+        "--llm-rate-limit",
+        type=float,
+        default=None,
+        help="Optional limit for LLM calls per minute (sleep-based).",
+    )
 
     args = parser.parse_args(argv)
+    env_rate_limit = os.getenv("BENCHMARK_LLM_REQUESTS_PER_MIN")
+    rate_limit = args.llm_rate_limit
+    if rate_limit is None and env_rate_limit:
+        try:
+            rate_limit = float(env_rate_limit)
+        except ValueError:
+            rate_limit = None
+
     return BenchmarkSettings(
         redis_url=args.redis_url,
         distance_threshold=args.distance_threshold,
         llm_model=args.llm_model,
         ttl_seconds=args.ttl_seconds,
         skip_redis=args.skip_redis,
+        llm_rate_limit=rate_limit,
     )
 
 

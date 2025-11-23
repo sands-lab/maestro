@@ -48,8 +48,10 @@ Environment knobs:
 | --- | --- |
 | `FINANCIAL_ANALYZER_SANITY_MODE` | `1` (default) for the short sanity-check workflow, `0` for the full multi-agent deep dive |
 | `GOOGLE_API_KEY` | Required for the default Google LLM path |
+| `BENCHMARK_LLM_REQUESTS_PER_MIN` | Optional requests-per-minute throttle applied to the Gemini client (also honors `BENCHMARK_LLM_RATE_PERIOD`) |
 
 Each run saves a markdown report under `company_reports/` and emits a unique OTEL trace file under `logs/`.
+When the optional rate-limit variables are set, the script configures the built-in Google rate limiter so that even harness-driven stress tests stay under the desired calls-per-minute budget.
 
 ## 4. Batch runs via the benchmark harness
 
