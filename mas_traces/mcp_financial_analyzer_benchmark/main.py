@@ -54,6 +54,27 @@ LLM_BACKEND_ALIASES = {
     "gemini": "google",
 }
 
+DEFAULT_SEARCH_PROVIDER_CHAIN = ["google", "serpapi", "tavily", "bing"]
+
+SEARCH_PROVIDER_ALIASES = {
+    "google": "g-search",
+    "g-search": "g-search",
+    "gsearch": "g-search",
+    "g_search": "g-search",
+    "serpapi": "serpapi-search",
+    "tavily": "tavily-search",
+    "bing": "bing-search",
+    "bing-web": "bing-search",
+    "bing_search": "bing-search",
+}
+
+SEARCH_PROVIDER_LABELS = {
+    "g-search": "Google Search (Playwright)",
+    "serpapi-search": "SerpAPI",
+    "tavily-search": "Tavily",
+    "bing-search": "Bing Web Search",
+}
+
 
 def _parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -78,6 +99,14 @@ def _parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=os.getenv("FINANCIAL_ANALYZER_LLM_MODEL"),
         help="Optional model override for the selected backend.",
     )
+    parser.add_argument(
+        "--search-providers",
+        default=os.getenv("FINANCIAL_ANALYZER_SEARCH_PROVIDERS"),
+        help=(
+            "Comma-separated list that sets the preferred search MCP order "
+            "(google, serpapi, tavily, bing). Defaults to trying all in that order."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -85,6 +114,7 @@ CLI_ARGS = _parse_cli_args()
 COMPANY_NAME = CLI_ARGS.company
 LLM_BACKEND = CLI_ARGS.llm_backend
 LLM_MODEL_OVERRIDE = CLI_ARGS.llm_model
+REQUESTED_SEARCH_PROVIDERS = CLI_ARGS.search_providers
 
 
 def _canonical_backend_name(backend: str | None) -> str | None:
@@ -149,6 +179,35 @@ def _is_truthy(value: str | None, default: bool = True) -> bool:
     return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
+def _parse_search_provider_chain(raw: str | None) -> list[str]:
+    if not raw:
+        return DEFAULT_SEARCH_PROVIDER_CHAIN.copy()
+    tokens = [
+        token.strip()
+        for token in raw.split(",")
+        if token and token.strip()
+    ]
+    return tokens or DEFAULT_SEARCH_PROVIDER_CHAIN.copy()
+
+
+def _canonical_search_server_name(token: str) -> str:
+    normalized = token.strip().lower()
+    return SEARCH_PROVIDER_ALIASES.get(normalized, normalized)
+
+
+def _search_provider_label(server_name: str) -> str:
+    return SEARCH_PROVIDER_LABELS.get(server_name, server_name)
+
+
+def _describe_search_chain(server_names: list[str]) -> str:
+    if not server_names:
+        return "your configured search tools"
+    labels = [_search_provider_label(name) for name in server_names]
+    if len(labels) == 1:
+        return labels[0]
+    return f"{labels[0]} (fallback: {', '.join(labels[1:])})"
+
+
 def _configure_google_rate_limit(config, logger):
     """Apply optional rate limiting overrides from environment variables."""
     google_config = getattr(config, "google", None)
@@ -198,6 +257,41 @@ async def main():
         logger = analyzer_app.logger
         _configure_google_rate_limit(context.config, logger)
 
+        requested_chain = _parse_search_provider_chain(REQUESTED_SEARCH_PROVIDERS)
+        available_search_servers: list[str] = []
+        unavailable_providers: list[str] = []
+        for provider in requested_chain:
+            server_name = _canonical_search_server_name(provider)
+            if server_name in context.config.mcp.servers:
+                if server_name not in available_search_servers:
+                    available_search_servers.append(server_name)
+            else:
+                unavailable_providers.append(provider)
+
+        if not available_search_servers:
+            logger.error(
+                "No search MCP servers were configured for the requested providers (%s). "
+                "Please install/configure at least one search MCP server (Google, SerpAPI, Tavily, Bing).",
+                ", ".join(requested_chain),
+            )
+            return False
+
+        if unavailable_providers:
+            logger.warning(
+                "Skipping unavailable search providers: %s",
+                ", ".join(unavailable_providers),
+            )
+
+        logger.info(
+            "Search providers enabled (in order): %s",
+            ", ".join(_search_provider_label(name) for name in available_search_servers),
+        )
+
+        search_provider_description = _describe_search_chain(available_search_servers)
+        research_server_names = list(available_search_servers)
+        if "fetch" not in research_server_names:
+            research_server_names.append("fetch")
+
         try:
             llm_factory, canonical_backend = _load_llm_factory(LLM_BACKEND)
         except (ImportError, AttributeError, ValueError) as err:
@@ -226,14 +320,6 @@ async def main():
         else:
             logger.warning("Filesystem server not configured - report saving may fail")
 
-        # Check for g-search server
-        if "g-search" not in context.config.mcp.servers:
-            logger.warning(
-                "Google Search server not found! This script requires g-search-mcp"
-            )
-            logger.info("You can install it with: npm install -g g-search-mcp")
-            return False
-
         # --- SPECIALIZED AGENT DEFINITIONS ---
 
         scope_note = (
@@ -254,7 +340,7 @@ async def main():
             instruction=f"""You are a comprehensive financial data collector for {COMPANY_NAME}.
             {scope_note}
 
-            Use Google Search + fetch to gather the requested facts in the order listed. Prefer the most recent data and stop once each section has concrete numbers.
+            Use {search_provider_description} together with fetch to gather the requested facts in the order listed. Prefer the most recent data and stop once each section has concrete numbers.
 
             **REQUIRED DATA TO COLLECT:**
             
@@ -311,7 +397,7 @@ async def main():
             - Note data timestamps/dates
             - If any section is missing data, explicitly state what couldn't be found
             """,
-            server_names=["g-search", "fetch"],
+            server_names=research_server_names,
         )
         # research_agent.attach_llm(GoogleAugmentedLLM)
 
