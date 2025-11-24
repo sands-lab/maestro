@@ -26,7 +26,12 @@ mcp:
     
     # Google Search MCP server
     g-search:
-      command: "g-search-mcp"
+      command: "./bin/g-search-headless.mjs"
+      env:
+        G_SEARCH_FORCE_HEADLESS: "1"
+        PLAYWRIGHT_HEADLESS: "1"
+        NODE_PATH: "/home/cheny0y/.nvm/versions/node/v24.11.1/lib/node_modules"
+        G_SEARCH_GLOBAL_NODE_ROOT: "/home/cheny0y/.nvm/versions/node/v24.11.1/lib/node_modules"
     
     # Filesystem server for writing reports
     filesystem:

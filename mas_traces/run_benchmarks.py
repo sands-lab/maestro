@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 import os
+import random
 from pathlib import Path
 from typing import Dict, List
 
@@ -121,6 +122,18 @@ def parse_args() -> argparse.Namespace:
         default=60.0,
         help="Window size (seconds) used when enforcing the LLM rate limit.",
     )
+    parser.add_argument(
+        "--rest-min",
+        type=float,
+        default=0.0,
+        help="Minimum rest interval (minutes) inserted between runs.",
+    )
+    parser.add_argument(
+        "--rest-max",
+        type=float,
+        default=0.0,
+        help="Maximum rest interval (minutes) inserted between runs.",
+    )
     return parser.parse_args()
 
 
@@ -147,6 +160,13 @@ def main() -> None:
             continue
         for run in range(1, args.runs + 1):
             exit_code |= run_once(name, bench, args.timeout, run, llm_overrides)
+            if run != args.runs and args.rest_max > 0:
+                low = max(0.0, min(args.rest_min, args.rest_max))
+                high = max(args.rest_min, args.rest_max)
+                delay = random.uniform(low, high) * 60.0
+                if delay > 0:
+                    print(f"[{name}] Resting for {delay/60.0:.2f} minutes before next run...")
+                    time.sleep(delay)
 
     sys.exit(exit_code)
 
