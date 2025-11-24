@@ -108,6 +108,19 @@ Headless Google Search is brittle because of frequent CAPTCHA enforcement, so th
 
 4. When multiple servers are available, the benchmark advertises all of them to the research agent. The LLM will try them in the order you list; if one fails (CAPTCHA, rate-limit, downtime) the agent automatically falls back to the next provider.
 
+### Trace metadata
+
+Every run now writes a metadata sidecar (`logs/financial_analyzer_traces-<timestamp>.jsonl.metadata.json`) that captures the runtime configuration: LLM backend/model, search provider order, sanity mode, CLI arguments, etc. This makes it easy to trace a log file back to the exact config that produced it.
+
+To tag older trace files that were created before this feature landed, run:
+
+```bash
+cd mas_traces/mcp_financial_analyzer_benchmark
+python scripts/backfill_trace_metadata.py --logs-dir logs
+```
+
+By default the script assumes all but the newest trace used the Google/Gemini backend and the newest trace used OpenAI GPT-4o. Override the `--older-*`, `--latest-*`, or `--search-providers` flags if your history differs. Metadata files are only created for trace files that don’t already have a `.metadata.json` neighbor unless you pass `--overwrite`.
+
 2. Adjust `mcp_agent.config.yaml` if needed:
        - The config already points to `mcp-server-fetch`, `g-search-mcp`, and `mcp-server-filesystem`. If those binaries live elsewhere, update the `command` entries.
        - `g-search-mcp` is invoked via `bin/g-search-headless.mjs`, a small wrapper that forces Playwright to remain in headless mode and exports `PLAYWRIGHT_HEADLESS=1`. It also passes the global npm directory through both `NODE_PATH` and `G_SEARCH_GLOBAL_NODE_ROOT`, allowing the wrapper to resolve the globally installed `g-search-mcp` + `playwright` packages even though the script itself lives outside that tree. Together these tweaks keep the browser from trying to open a real X11 window (which would hang inside CI) and ensure all Node dependencies are found.

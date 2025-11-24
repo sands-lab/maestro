@@ -7,10 +7,13 @@ from the portfolio analyzer example.
 
 import argparse
 import asyncio
+import glob
 import importlib
+import json
 import os
 import sys
-from datetime import datetime
+from copy import deepcopy
+from datetime import datetime, timezone
 from typing import Any
 from mcp_agent.app import MCPApp
 from mcp_agent.config import (
@@ -74,6 +77,18 @@ SEARCH_PROVIDER_LABELS = {
     "tavily-search": "Tavily",
     "bing-search": "Bing Web Search",
 }
+
+METADATA_VERSION = 1
+
+ENVIRONMENT_OVERRIDES = [
+    "FINANCIAL_ANALYZER_SANITY_MODE",
+    "FINANCIAL_ANALYZER_LLM_BACKEND",
+    "FINANCIAL_ANALYZER_LLM_MODEL",
+    "FINANCIAL_ANALYZER_SEARCH_PROVIDERS",
+    "BENCHMARK_LLM_REQUESTS_PER_MIN",
+    "BENCHMARK_LLM_RATE_PERIOD",
+    "GOOGLE_API_KEY",
+]
 
 
 def _parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -208,6 +223,73 @@ def _describe_search_chain(server_names: list[str]) -> str:
     return f"{labels[0]} (fallback: {', '.join(labels[1:])})"
 
 
+def _current_trace_logs() -> set[str]:
+    pattern = os.path.join(TRACE_LOG_DIR, "financial_analyzer_traces-*.jsonl")
+    return set(glob.glob(pattern))
+
+
+def _build_run_metadata(
+    run_id: str,
+    llm_backend: str,
+    llm_canonical_backend: str | None,
+    llm_model: str,
+    search_requested: list[str],
+    search_active: list[str],
+    search_description: str,
+    report_path: str,
+) -> dict[str, Any]:
+    timestamp = datetime.now(timezone.utc).isoformat()
+    env_overrides = {
+        key: os.getenv(key)
+        for key in ENVIRONMENT_OVERRIDES
+        if os.getenv(key) is not None
+    }
+    return {
+        "metadata_version": METADATA_VERSION,
+        "generated_at": timestamp,
+        "run_id": run_id,
+        "company": COMPANY_NAME,
+        "report_path": report_path,
+        "llm_backend": llm_backend,
+        "llm_canonical_backend": llm_canonical_backend,
+        "llm_model": llm_model,
+        "search_providers_requested": search_requested,
+        "search_providers_active": search_active,
+        "search_provider_description": search_description,
+        "sanity_mode": SANITY_MODE,
+        "news_items_required": NEWS_ITEMS_REQUIRED,
+        "research_max_refinements": RESEARCH_MAX_REFINEMENTS,
+        "research_min_rating": RESEARCH_MIN_RATING.name,
+        "orchestrator_max_iterations": ORCHESTRATOR_MAX_ITERATIONS,
+        "cli_argv": sys.argv[1:],
+        "env_overrides": env_overrides,
+        "python_version": sys.version,
+        "app_name": app.name,
+    }
+
+
+def _write_trace_metadata(
+    logger,
+    new_trace_logs: list[str],
+    base_metadata: dict[str, Any],
+    output_path: str,
+):
+    if not new_trace_logs:
+        logger.warning("No new trace files detected; skipping metadata write.")
+        return
+
+    for trace_path in new_trace_logs:
+        metadata = deepcopy(base_metadata)
+        metadata["trace_log"] = os.path.relpath(trace_path, start=os.getcwd())
+        metadata["trace_log_basename"] = os.path.basename(trace_path)
+        metadata["report_path"] = output_path
+        metadata_path = f"{trace_path}.metadata.json"
+        os.makedirs(os.path.dirname(metadata_path), exist_ok=True)
+        with open(metadata_path, "w", encoding="utf-8") as meta_file:
+            json.dump(metadata, meta_file, indent=2, sort_keys=True)
+        logger.info("Trace metadata written: %s", metadata_path)
+
+
 def _configure_google_rate_limit(config, logger):
     """Apply optional rate limiting overrides from environment variables."""
     google_config = getattr(config, "google", None)
@@ -251,6 +333,7 @@ async def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_file = f"{COMPANY_NAME.lower().replace(' ', '_')}_report_{timestamp}.md"
     output_path = os.path.join(OUTPUT_DIR, output_file)
+    existing_trace_logs = _current_trace_logs()
 
     async with app.run() as analyzer_app:
         context = analyzer_app.context
@@ -291,6 +374,17 @@ async def main():
         research_server_names = list(available_search_servers)
         if "fetch" not in research_server_names:
             research_server_names.append("fetch")
+
+        run_metadata = _build_run_metadata(
+            run_id=timestamp,
+            llm_backend=LLM_BACKEND,
+            llm_canonical_backend=canonical_backend,
+            llm_model=model_name,
+            search_requested=requested_chain,
+            search_active=available_search_servers,
+            search_description=search_provider_description,
+            report_path=output_path,
+        )
 
         try:
             llm_factory, canonical_backend = _load_llm_factory(LLM_BACKEND)
@@ -779,6 +873,8 @@ async def main():
                 report_file.write(report_markdown)
 
             logger.info(f"Report successfully generated: {output_path}")
+            new_trace_logs = sorted(_current_trace_logs() - existing_trace_logs)
+            _write_trace_metadata(logger, new_trace_logs, run_metadata, output_path)
             return True
 
         except Exception as e:
