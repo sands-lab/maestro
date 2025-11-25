@@ -13,3 +13,11 @@ python run_benchmarks.py --llm-rate-limit 2             # optional LLM RPM cap
 ```
 
 The runner spins up each benchmark sequentially, enforces a per-run timeout (SIGKILL on expiration), and prints the new log files created by that run. Use `--llm-rate-limit` (plus `--llm-rate-period`) to throttle compatible suites during stress tests. You can still execute any benchmark directly by `cd`'ing into its folder and running `python main.py`.
+
+## Example Progress Checklist
+
+Below is the progress status for each benchmark example. This list will expand as new examples are added.
+
+- [x] **financial_analyzer**: Runs successfully with OpenAI LLM and Tavily search MCP.
+- [ ] **semantic_cache**: Not yet tested.
+- [ ] **tourist_scheduler**: Not yet tested.
