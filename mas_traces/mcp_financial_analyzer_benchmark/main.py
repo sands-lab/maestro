@@ -15,6 +15,8 @@ import sys
 from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any
+from pathlib import Path
+import yaml
 from mcp_agent.app import MCPApp
 from mcp_agent.config import (
     GoogleSettings,
@@ -57,14 +59,13 @@ LLM_BACKEND_ALIASES = {
     "gemini": "google",
 }
 
-DEFAULT_SEARCH_PROVIDER_CHAIN = ["google", "serpapi", "tavily", "bing"]
+DEFAULT_SEARCH_PROVIDER_CHAIN = ["google", "tavily", "bing"]
 
 SEARCH_PROVIDER_ALIASES = {
     "google": "g-search",
     "g-search": "g-search",
     "gsearch": "g-search",
     "g_search": "g-search",
-    "serpapi": "serpapi-search",
     "tavily": "tavily-search",
     "bing": "bing-search",
     "bing-web": "bing-search",
@@ -73,7 +74,6 @@ SEARCH_PROVIDER_ALIASES = {
 
 SEARCH_PROVIDER_LABELS = {
     "g-search": "Google Search (Playwright)",
-    "serpapi-search": "SerpAPI",
     "tavily-search": "Tavily",
     "bing-search": "Bing Web Search",
 }
@@ -119,17 +119,79 @@ def _parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=os.getenv("FINANCIAL_ANALYZER_SEARCH_PROVIDERS"),
         help=(
             "Comma-separated list that sets the preferred search MCP order "
-            "(google, serpapi, tavily, bing). Defaults to trying all in that order."
+            "(google, tavily, bing). Defaults to trying all in that order."
         ),
+    )
+    parser.add_argument(
+        "--print-env-only",
+        action="store_true",
+        help="Print the seeded API key environment variables and exit.",
     )
     return parser.parse_args(argv)
 
+
+def _load_secret_file() -> dict[str, Any]:
+    candidates = [
+        Path("mcp_agent.secrets.yaml"),
+        Path("mcp-agent.secrets.yaml"),
+        Path(__file__).with_name("mcp_agent.secrets.yaml"),
+        Path(__file__).with_name("mcp-agent.secrets.yaml"),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            try:
+                return yaml.safe_load(candidate.read_text(encoding="utf-8")) or {}
+            except Exception:
+                return {}
+    return {}
+
+
+_SEEDED_ENV_VARS: dict[str, str | None] = {}
+
+
+def _seed_env_from_secrets():
+    secrets = _load_secret_file()
+    if not secrets:
+        return
+    for secret_key, value in secrets.items():
+        env_var = f"{secret_key.upper()}_API_KEY"
+        if env_var in os.environ:
+            continue
+        if isinstance(value, dict):
+            api_key = value.get("api_key")
+        else:
+            api_key = value
+        if api_key:
+            _SEEDED_ENV_VARS[env_var] = os.environ.get(env_var)
+            os.environ[env_var] = api_key
+
+
+_seed_env_from_secrets()
+
+
+def _restore_seeded_env():
+    for env_var, previous in _SEEDED_ENV_VARS.items():
+        if previous is None:
+            os.environ.pop(env_var, None)
+        else:
+            os.environ[env_var] = previous
+
+
+def _print_seeded_env():
+    if not _SEEDED_ENV_VARS:
+        print("No API keys were seeded from secrets.")
+        return
+    print("Seeded API key environment variables:")
+    for key in sorted(_SEEDED_ENV_VARS):
+        value = os.environ.get(key)
+        print(f"  {key} = {value}")
 
 CLI_ARGS = _parse_cli_args()
 COMPANY_NAME = CLI_ARGS.company
 LLM_BACKEND = CLI_ARGS.llm_backend
 LLM_MODEL_OVERRIDE = CLI_ARGS.llm_model
 REQUESTED_SEARCH_PROVIDERS = CLI_ARGS.search_providers
+PRINT_ENV_ONLY = CLI_ARGS.print_env_only
 
 
 def _canonical_backend_name(backend: str | None) -> str | None:
@@ -335,10 +397,18 @@ async def main():
     output_path = os.path.join(OUTPUT_DIR, output_file)
     existing_trace_logs = _current_trace_logs()
 
+    if PRINT_ENV_ONLY:
+        _print_seeded_env()
+        return True
+
     async with app.run() as analyzer_app:
         context = analyzer_app.context
         logger = analyzer_app.logger
         _configure_google_rate_limit(context.config, logger)
+
+        for server in context.config.mcp.servers.values():
+            if server.args:
+                server.args = [os.path.expandvars(arg) for arg in server.args]
 
         requested_chain = _parse_search_provider_chain(REQUESTED_SEARCH_PROVIDERS)
         available_search_servers: list[str] = []
@@ -375,17 +445,9 @@ async def main():
         if "fetch" not in research_server_names:
             research_server_names.append("fetch")
 
-        run_metadata = _build_run_metadata(
-            run_id=timestamp,
-            llm_backend=LLM_BACKEND,
-            llm_canonical_backend=canonical_backend,
-            llm_model=model_name,
-            search_requested=requested_chain,
-            search_active=available_search_servers,
-            search_description=search_provider_description,
-            report_path=output_path,
-        )
+        run_metadata = None  # Filled in after the LLM backend loads successfully.
 
+        canonical_backend: str | None = None
         try:
             llm_factory, canonical_backend = _load_llm_factory(LLM_BACKEND)
         except (ImportError, AttributeError, ValueError) as err:
@@ -405,6 +467,17 @@ async def main():
         logger.info(
             f"Using LLM backend '{LLM_BACKEND}' "
             f"(canonical: {canonical_backend or 'custom'}) with model '{model_name}'"
+        )
+
+        run_metadata = _build_run_metadata(
+            run_id=timestamp,
+            llm_backend=LLM_BACKEND,
+            llm_canonical_backend=canonical_backend,
+            llm_model=model_name,
+            search_requested=requested_chain,
+            search_active=available_search_servers,
+            search_description=search_provider_description,
+            report_path=output_path,
         )
 
         # Configure filesystem server to use current directory
@@ -854,6 +927,7 @@ async def main():
 
         # Execute the analysis workflow
         logger.info("Starting the stock analysis workflow")
+        run_succeeded = False
         try:
             orchestrator_params = RequestParams(
                 model=model_name,
@@ -873,14 +947,26 @@ async def main():
                 report_file.write(report_markdown)
 
             logger.info(f"Report successfully generated: {output_path}")
-            new_trace_logs = sorted(_current_trace_logs() - existing_trace_logs)
-            _write_trace_metadata(logger, new_trace_logs, run_metadata, output_path)
-            return True
+            run_succeeded = True
 
         except Exception as e:
             logger.error(f"Error during workflow execution: {str(e)}")
-            return False
+        finally:
+            new_trace_logs = sorted(_current_trace_logs() - existing_trace_logs)
+            if not new_trace_logs:
+                logger.warning("No new trace files detected; skipping metadata write.")
+            elif not run_metadata:
+                logger.warning(
+                    "Trace logs detected but base metadata was never initialized; skipping metadata write."
+                )
+            else:
+                _write_trace_metadata(logger, new_trace_logs, run_metadata, output_path)
+
+        return run_succeeded
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    finally:
+        _restore_seeded_env()

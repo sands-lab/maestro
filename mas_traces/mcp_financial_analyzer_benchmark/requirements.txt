@@ -1,7 +1,10 @@
-mcp-agent @ git+https://github.com/chenIshi/mcp-agent@feat/trace-collection
+mcp-agent[client] @ git+https://github.com/chenIshi/mcp-agent@feat/trace-collection
 mcp-server-fetch>=0.1.4
 openai>=1.58
 anthropic>=0.39
 opentelemetry-api>=1.27
 opentelemetry-sdk>=1.27
 google-genai>=1.10.0
+uv>=0.4.0
+fastmcp>=0.2.0
+mcp-server-bing @ git+https://github.com/leehanchung/bing-search-mcp.git

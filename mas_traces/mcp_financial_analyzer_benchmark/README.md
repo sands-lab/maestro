@@ -1,165 +1,132 @@
 # MCP Financial Analyzer Benchmark
 
-This standalone benchmark packages the `feat/trace-collection` version of Chen Ishi's [MCP financial analyzer](https://github.com/chenIshi/mcp-agent/tree/feat/trace-collection/examples/usecases/mcp_financial_analyzer). It keeps the original OpenTelemetry instrumentation (per-run JSONL files in `logs/`) but swaps the setup instructions to use standard Python virtual environments instead of `uv`.
+This project republishes the `feat/trace-collection` version of Chen Ishi’s financial analyzer with a friendlier setup: standard Python virtual environments, configurable MCP search servers, and JSONL trace files saved under `logs/`. Each run generates both a Markdown report and a metadata sidecar that captures the exact configuration used.
 
-## 1. Prerequisites
+---
 
-1. System dependencies  
-   - Python 3.10+  
-   - Node.js for MCP servers (`g-search-mcp`, `mcp-server-filesystem`)  
-   - `npm install -g g-search-mcp @modelcontextprotocol/server-filesystem playwright`  
-   - Install the Playwright browser bundle once so the g-search MCP server can launch Chromium reliably:
-
-     ```bash
-     PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium
-     ```
-
-   - Install the fetch MCP server (Python): `pip install mcp-server-fetch`
-   - Sanity-check the headless Google search shim before running the benchmark:
-
-     ```bash
-     cd mas_traces/mcp_financial_analyzer_benchmark
-     ./bin/g-search-headless.mjs --once "Apple stock price today"
-     ```
-
-     If this command fails with `ERR_MODULE_NOT_FOUND: playwright`, re-run the global `npm install -g playwright` command above and repeat the browser install.
-   - Optional alternative search MCP servers (install any combination you plan to use):  
-     - `npm install -g @modelcontextprotocol/server-serpapi` (SerpAPI)  
-     - `npm install -g @modelcontextprotocol/server-tavily` (Tavily)  
-     - `npm install -g @modelcontextprotocol/server-bing-web-search` (Bing Web Search)  
-     Each of these servers requires its own API key—add them to `mcp_agent.secrets.yaml` and/or export `SERPAPI_API_KEY`, `TAVILY_API_KEY`, or `BING_SEARCH_V7_KEY` before running the benchmark.
-2. Clone this repo, then create a venv inside the benchmark folder:
+## Quick Start
 
 ```bash
 cd mas_traces/mcp_financial_analyzer_benchmark
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
-```
 
-The requirements file pins the `mcp-agent` package directly to the `feat/trace-collection` branch so you inherit all of the tracing fixes that were tested remotely.
-
-## 2. Configure MCP + secrets
-
-1. Copy the provided secrets template and insert your API keys:
-
-```bash
 cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
+# fill in API keys inside the new secrets file
+
+python main.py "Apple"
 ```
 
-Add the keys for the provider you plan to use (OpenAI, Anthropic, etc.). The benchmark defaults to the Google Augmented LLM, so add `GOOGLE_API_KEY` to your environment or `.env` file as well.
+The CLI auto-loads `mcp_agent.config.yaml`/`mcp_agent.secrets.yaml`, seeds any missing `*_API_KEY` environment variables for the current process, runs the workflow, and restores your shell environment afterward.
 
-### Using OpenAI or another LLM provider
+---
 
-The runner exposes a pluggable LLM layer so you can swap out Gemini when it misbehaves:
+## Requirements
 
-1. Populate `mcp_agent.secrets.yaml` with the provider you want to use. For OpenAI that means:
+- Python 3.10+
+- Node.js (needed for the Google search shim and the filesystem MCP server)
+- Global npm packages:
+  - `npm install -g g-search-mcp @modelcontextprotocol/server-filesystem playwright`
+  - Install Chromium for Playwright once: `PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium`
+- Python dependencies:
+  - `pip install -r requirements.txt` (installs `mcp-agent`, `mcp-server-fetch`, Tavily/Bing clients, etc.)
+- Optional MCP servers:
+  - Tavily (hosted): `npx -y mcp-remote ...`
+  - Bing: installed via `requirements.txt` and invoked with `python -m mcp_server_bing.server`
 
-   ```yaml
-   openai:
-     api_key: "sk-..."
-   ```
+Tip: run `./bin/g-search-headless.mjs --once "Apple stock price today"` to verify the Playwright-based Google shim before your first benchmark run.
 
-   Anthropic or any other supported backend follows the same nesting (`anthropic.api_key`, etc.).
+---
 
-2. Choose the backend at runtime in one of two ways:
+## Secrets and Environment
 
-   - CLI flag: `python main.py "Apple" --llm-backend openai`
-   - Env var: `FINANCIAL_ANALYZER_LLM_BACKEND=openai python main.py`
-
-   Built-in aliases include `google`/`gemini`, `openai`, and `anthropic`. For advanced cases you can pass your own class via `module.path:ClassName`.
-
-3. (Optional) Pin a specific model if you do not want the defaults (`gemini-2.5-flash-lite` for Google, `gpt-4o` for OpenAI):
-
-   - CLI flag: `--llm-model gpt-4o-mini`
-   - Env var: `FINANCIAL_ANALYZER_LLM_MODEL=gpt-4o-mini`
-
-When a non-Google backend is selected the script skips Gemini entirely, so you can continue benchmarking even if Gemini is degraded.
-
-### Choosing a search provider (or multiple)
-
-Headless Google Search is brittle because of frequent CAPTCHA enforcement, so the benchmark now supports multiple MCP-compatible search providers. Use whichever combination is most reliable in your environment:
-
-1. Install and configure the search servers you care about (see the optional prerequisite list above). For each provider, add an entry to `mcp_agent.config.yaml`. Example snippets (uncomment the ones you use and swap the command/path if you installed them somewhere else):
+All API keys live in `mcp_agent.secrets.yaml`. Copy the example file, then add entries like:
 
 ```yaml
-    # serpapi-search:
-    #   command: "mcp-server-serpapi"
-    #   env:
-    #     SERPAPI_API_KEY: "${SERPAPI_API_KEY}"
-
-    # tavily-search:
-    #   command: "mcp-server-tavily"
-    #   env:
-    #     TAVILY_API_KEY: "${TAVILY_API_KEY}"
-
-    # bing-search:
-    #   command: "mcp-server-bing-web-search"
-    #   env:
-    #     BING_SEARCH_V7_KEY: "${BING_SEARCH_V7_KEY}"
+openai:
+  api_key: "sk-..."
+tavily:
+  api_key: "tvly-..."
+bing:
+  api_key: "..."
 ```
 
-2. Provide the API keys in `mcp_agent.secrets.yaml` (placeholders are included) or via environment variables.
+At startup the script reads this file and exports `${PROVIDER}_API_KEY` for each section (`tavily` → `TAVILY_API_KEY`, etc.) unless you already set the variable yourself. These temporary exports are removed when the program exits.
 
-3. Choose the order in which the benchmark should try those providers:
-   - CLI flag: `--search-providers serpapi,bing`  
-   - Env var: `FINANCIAL_ANALYZER_SEARCH_PROVIDERS=google,serpapi,tavily,bing`  
-   The default order is `google,serpapi,tavily,bing`. The script filters out providers that are not configured in `mcp_agent.config.yaml` or missing API keys.
+### Selecting LLMs and Models
 
-4. When multiple servers are available, the benchmark advertises all of them to the research agent. The LLM will try them in the order you list; if one fails (CAPTCHA, rate-limit, downtime) the agent automatically falls back to the next provider.
+- CLI flag: `python main.py "Apple" --llm-backend openai --llm-model gpt-4o`
+- Env vars:  
+  `FINANCIAL_ANALYZER_LLM_BACKEND=openai FINANCIAL_ANALYZER_LLM_MODEL=gpt-4o python main.py`
 
-### Trace metadata
+Available aliases: `google`, `gemini`, `openai`, `anthropic`, or a custom `module.path:ClassName`.
 
-Every run now writes a metadata sidecar (`logs/financial_analyzer_traces-<timestamp>.jsonl.metadata.json`) that captures the runtime configuration: LLM backend/model, search provider order, sanity mode, CLI arguments, etc. This makes it easy to trace a log file back to the exact config that produced it.
+### Choosing Search Providers
 
-To tag older trace files that were created before this feature landed, run:
+The workflow can chain multiple MCP search servers. Configure them in `mcp_agent.config.yaml` and select the order via:
 
 ```bash
-cd mas_traces/mcp_financial_analyzer_benchmark
-python scripts/backfill_trace_metadata.py --logs-dir logs
+python main.py --search-providers tavily,bing
+# or
+FINANCIAL_ANALYZER_SEARCH_PROVIDERS=tavily,bing python main.py
 ```
 
-By default the script assumes all but the newest trace used the Google/Gemini backend and the newest trace used OpenAI GPT-4o. Override the `--older-*`, `--latest-*`, or `--search-providers` flags if your history differs. Metadata files are only created for trace files that don’t already have a `.metadata.json` neighbor unless you pass `--overwrite`.
+Any provider listed but missing from the config or lacking an API key is skipped automatically.
 
-2. Adjust `mcp_agent.config.yaml` if needed:
-       - The config already points to `mcp-server-fetch`, `g-search-mcp`, and `mcp-server-filesystem`. If those binaries live elsewhere, update the `command` entries.
-       - `g-search-mcp` is invoked via `bin/g-search-headless.mjs`, a small wrapper that forces Playwright to remain in headless mode and exports `PLAYWRIGHT_HEADLESS=1`. It also passes the global npm directory through both `NODE_PATH` and `G_SEARCH_GLOBAL_NODE_ROOT`, allowing the wrapper to resolve the globally installed `g-search-mcp` + `playwright` packages even though the script itself lives outside that tree. Together these tweaks keep the browser from trying to open a real X11 window (which would hang inside CI) and ensure all Node dependencies are found.
-       - **Search reliability TODOs:** Google regularly injects CAPTCHA/consent flows that stall headless Playwright. Long term we should:
-         1. Provide a documented “headed bootstrap” flow so users can solve the CAPTCHA once and copy the generated `browser-state-*.json` back to CI.
-         2. Automate state rotation/reset so the cookies stay fresh (e.g., helper script that replays the headed flow as needed).
-         3. Add randomized query timing + throttling knobs to reduce how often Google challenges us.
-         4. Support alternative search MCPs (SerpAPI, Tavily, Bing) or a mock search backend for CI so we’re not coupled to Google Playwright at all.  
-            _Status:_ you can already wire up any combination of these MCP servers and control the order with `--search-providers`. The remaining work is automating setup (headed bootstrap + cookie rotation).
-       - OpenTelemetry is enabled with a file exporter that writes to `logs/financial_analyzer_traces-<timestamp>.jsonl`. You can add an OTLP exporter here if you want to stream traces to Jaeger/Honeycomb/etc.
-       - **TODO:** Evaluate swapping `g-search-mcp` for an API-based search MCP (e.g., SerpAPI MCP, Tavily MCP, Bing Web Search MCP) so we no longer depend on Playwright + Google CAPTCHA. Whichever provider we choose should be pluggable via `mcp_agent.config.yaml` and documented with setup instructions + rate-limit guidance.
+### Debugging Env Seeding
 
-## 3. Run the benchmark manually
+Run `python main.py --print-env-only` to list every API key pulled from the secrets file without launching the agents.
 
-Run from this directory so the app can discover `mcp_agent.config.yaml` and `mcp_agent.secrets.yaml` automatically.
+---
+
+## Running the Benchmark
 
 ```bash
 python main.py "Apple"
 ```
 
-Environment knobs:
+- Reports land in `company_reports/<company>_report_<timestamp>.md`.
+- Traces land in `logs/financial_analyzer_traces-<timestamp>.jsonl`.
+- Metadata sidecars (same name + `.metadata.json`) record CLI args, LLM/search configuration, and environment overrides.
+
+Key environment knobs:
 
 | Variable | Purpose |
 | --- | --- |
-| `FINANCIAL_ANALYZER_SANITY_MODE` | `1` (default) for the short sanity-check workflow, `0` for the full multi-agent deep dive |
-| `GOOGLE_API_KEY` | Required for the default Google LLM path |
-| `BENCHMARK_LLM_REQUESTS_PER_MIN` | Optional requests-per-minute throttle applied to the Gemini client (also honors `BENCHMARK_LLM_RATE_PERIOD`) |
-| `FINANCIAL_ANALYZER_SEARCH_PROVIDERS` | (Optional) Comma-separated search MCP order, e.g. `serpapi,bing,google`. Matches the `--search-providers` CLI flag. |
+| `FINANCIAL_ANALYZER_SANITY_MODE` | `1` (default) for the short run, `0` for the full workflow |
+| `BENCHMARK_LLM_REQUESTS_PER_MIN` + `BENCHMARK_LLM_RATE_PERIOD` | Optional rate limits when using Gemini |
+| `FINANCIAL_ANALYZER_SEARCH_PROVIDERS` | Comma-separated priority list for search MCP servers |
 
-Each run saves a markdown report under `company_reports/` and emits a unique OTEL trace file under `logs/`.
-When the optional rate-limit variables are set, the script configures the built-in Google rate limiter so that even harness-driven stress tests stay under the desired calls-per-minute budget.
+---
 
-## 4. Batch runs via the benchmark harness
+## Trace Utilities
 
-The shared runner (`mas_traces/run_benchmarks.py`) can execute this benchmark multiple times with a fixed timeout and automatic SIGKILL on overruns. Example:
+- **Backfill metadata** for older trace files:
+
+  ```bash
+  python scripts/backfill_trace_metadata.py --logs-dir logs
+  ```
+
+---
+
+## Batch Runs
+
+Use the shared harness to execute multiple iterations with timeouts:
 
 ```bash
 cd mas_traces
-python run_benchmarks.py --benchmark mcp_financial --runs 2 --timeout 900
+python run_benchmarks.py --benchmark mcp_financial --runs 3 --timeout 900
 ```
 
-The script prints which log files were created on every iteration so it is easy to archive or diff traces across runs.
+The harness prints the log filenames for each run so you can archive or diff them afterward.
+
+---
+
+## Troubleshooting Notes
+
+- **Search flakiness:** Google Playwright often hits CAPTCHA walls. Prefer Tavily/Bing when possible, or add multiple providers so the agent can fall back.
+- **Yahoo Finance rate limits:** Some traces show `429`/`404` from Yahoo when scraping financial metrics. Supply alternate URLs (MacroTrends, Investing.com, etc.) via the agent prompt if you need redundancy.
+- **Environment sanity check:** If Tavily/Bing still complain about missing keys, run `python main.py --print-env-only` to verify the script can see the secrets before launching the workflow.
+
+Feel free to adapt the MCP config for additional servers or exporters—everything is pluggable via `mcp_agent.config.yaml` and the secrets file.
