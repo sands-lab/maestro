@@ -23,9 +23,9 @@ class BenchmarkConfig(Dict[str, object]):
 
 
 BENCHMARKS: Dict[str, BenchmarkConfig] = {
-    "semantic_cache": {
-        "path": ROOT / "semantic_cache_benchmark",
-        "log_dir": ROOT / "semantic_cache_benchmark" / "logs",
+    "faq_redis_semantic_cache_naive": {
+        "path": ROOT / "faq_redis_semantic_cache_naive",
+        "log_dir": ROOT / "faq_redis_semantic_cache_naive" / "logs",
         "command": [PYTHON, "main.py"],
     },
     "tourist_scheduler": {

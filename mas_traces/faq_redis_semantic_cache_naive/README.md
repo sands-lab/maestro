@@ -1,10 +1,12 @@
-# Semantic Cache Benchmark
+# FAQ Redis Semantic Cache (Naive, No MAS)
 
-This directory transforms the `mas_traces/Semantic Caching/L2.ipynb` notebook into a runnable benchmark that mirrors the structure of the [MCP financial analyzer example](https://github.com/lastmile-ai/mcp-agent/tree/main/examples/usecases/mcp_financial_analyzer). It demonstrates:
+This directory transforms the `mas_traces/Semantic Caching/L2.ipynb` notebook into a single-agent benchmark that mirrors the structure of the [MCP financial analyzer example](https://github.com/lastmile-ai/mcp-agent/tree/main/examples/usecases/mcp_financial_analyzer). It demonstrates:
+
+> Naive FAQ answering with a Redis-backed semantic cache—no multi-agent workflows required.
 
 1. Building an in-memory semantic cache with `sentence-transformers`
-2. Loading the cache into Redis using `redisvl`
-3. Measuring cache hit/miss latency and LLM costs with a lightweight evaluator
+2. Loading the FAQ answers into Redis using `redisvl`
+3. Measuring naive (non-MAS) cache hit/miss latency and LLM costs with a lightweight evaluator
 
 ```text
 ┌────────────────────┐        ┌───────────────────────┐        ┌───────────────────────┐
@@ -18,7 +20,7 @@ This directory transforms the `mas_traces/Semantic Caching/L2.ipynb` notebook in
 ## 1. Environment setup
 
 ```bash
-cd mas_traces/semantic_cache_benchmark
+cd mas_traces/faq_redis_semantic_cache_naive
 python -m venv .venv && source .venv/bin/activate  # or use uv
 pip install -r requirements.txt
 ```
@@ -46,12 +48,12 @@ CLI flags:
 | `--skip-redis` | Only run the in-memory cache warm-up |
 | `--llm-rate-limit` | Optional LLM calls per minute throttle (same via `BENCHMARK_LLM_REQUESTS_PER_MIN`) |
 
-The script prints the in-memory cache behavior, loads the full FAQ dataset into Redis, and then replays benchmark questions. Cache misses trigger an OpenAI call whose latency is tracked by `PerfEval`. Every execution also writes a run-specific OpenTelemetry trace (text format) under `logs/` so you can archive or diff runs easily. Use `python ../run_benchmarks.py --benchmark semantic_cache --runs 3` if you want the shared harness to execute repeated runs with timeouts. A sample console log is available in `sample_output.md`.
+The script prints the in-memory cache behavior, loads the full FAQ dataset into Redis, and then replays benchmark questions. Cache misses trigger an OpenAI call whose latency is tracked by `PerfEval`. Every execution also writes a run-specific OpenTelemetry trace (text format) under `logs/` so you can archive or diff runs easily. Use `python ../run_benchmarks.py --benchmark faq_redis_semantic_cache_naive --runs 3` if you want the shared harness to execute repeated runs with timeouts. A sample console log is available in `sample_output.md`.
 
 ## 3. Project layout
 
 ```
-mas_traces/semantic_cache_benchmark
+mas_traces/faq_redis_semantic_cache_naive
 ├── cache/                 # Helper modules extracted from the notebook
 ├── data/                  # FAQ + benchmark query CSV files
 ├── logs/                  # OpenTelemetry span dumps (gitignored)
