@@ -6,9 +6,10 @@ import argparse
 import json
 import logging
 import os
+import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Optional, Sequence, Tuple
 
@@ -36,7 +37,15 @@ from cache.faq_data_container import FAQDataContainer
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("semantic-cache-benchmark")
-LOG_DIR = Path(__file__).resolve().parent / "logs"
+BENCHMARK_ROOT = Path(__file__).resolve().parent
+LOG_DIR = BENCHMARK_ROOT / "logs"
+APP_NAME = "faq_redis_semantic_cache_naive"
+METADATA_VERSION = 1
+METADATA_ENV_VARS = [
+    "BENCHMARK_LLM_REQUESTS_PER_MIN",
+    "BENCHMARK_LLM_RATE_PERIOD",
+]
+LLM_BACKEND = "openai"
 
 
 def cosine_dist(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -131,6 +140,7 @@ def setup_tracer() -> tuple[trace.Tracer, Path, TracerProvider]:
     LOG_DIR.mkdir(exist_ok=True)
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     log_path = LOG_DIR / f"run_{timestamp}.log"
+    log_path.touch(exist_ok=True)
     resource = Resource.create({"service.name": "semantic-cache-benchmark"})
     provider = TracerProvider(resource=resource)
     exporter = FileSpanExporter(log_path)
@@ -159,6 +169,61 @@ class RateLimiter:
             time.sleep(next_allowed - now)
             now = time.monotonic()
         self._last_call = now
+
+
+def _extract_run_id(log_path: Path) -> str:
+    """Derive the run identifier from the log filename."""
+    stem = log_path.stem
+    if stem.startswith("run_"):
+        return stem.split("run_", 1)[1]
+    return stem
+
+
+def _build_run_metadata(
+    settings: BenchmarkSettings, run_id: str, status: str = "unknown"
+) -> dict[str, object]:
+    env_overrides = {
+        key: os.getenv(key)
+        for key in METADATA_ENV_VARS
+        if os.getenv(key) is not None
+    }
+    return {
+        "metadata_version": METADATA_VERSION,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "run_id": run_id,
+        "app_name": APP_NAME,
+        "python_version": sys.version,
+        "cli_argv": sys.argv[1:],
+        "redis_url": settings.redis_url,
+        "distance_threshold": settings.distance_threshold,
+        "llm_backend": LLM_BACKEND,
+        "llm_model": settings.llm_model,
+        "ttl_seconds": settings.ttl_seconds,
+        "skip_redis": settings.skip_redis,
+        "llm_rate_limit": settings.llm_rate_limit,
+        "env_overrides": env_overrides,
+        "status": status,
+    }
+
+
+def write_trace_metadata(log_path: Path, base_metadata: dict[str, object]) -> None:
+    """Persist metadata describing the trace log that was just written."""
+    if not log_path.exists():
+        logger.warning("Trace log not found; skipping metadata write: %s", log_path)
+        return
+
+    metadata = dict(base_metadata)
+    try:
+        rel_path = os.path.relpath(log_path, start=BENCHMARK_ROOT)
+    except ValueError:
+        rel_path = str(log_path)
+    metadata["trace_log"] = rel_path
+    metadata["trace_log_basename"] = log_path.name
+
+    metadata_path = log_path.with_suffix(f"{log_path.suffix}.metadata.json")
+    with metadata_path.open("w", encoding="utf-8") as meta_file:
+        json.dump(metadata, meta_file, indent=2, sort_keys=True)
+    logger.info("Trace metadata written: %s", metadata_path)
 
 
 class SemanticCacheBenchmark:
@@ -414,10 +479,24 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     settings = parse_args(argv)
     tracer, log_path, provider = setup_tracer()
     logger.info("OpenTelemetry trace log: %s", log_path)
+    run_id = _extract_run_id(log_path)
     benchmark = SemanticCacheBenchmark(settings, tracer)
-    benchmark.run()
-    provider.shutdown()
-    logger.info("Wrote trace log to %s", log_path)
+    status = "ok"
+    exit_code = 0
+    try:
+        benchmark.run()
+    except Exception:  # pragma: no cover - surface full stack to console
+        status = "failed"
+        exit_code = 1
+        logger.exception("Benchmark run failed")
+    finally:
+        provider.shutdown()
+        run_metadata = _build_run_metadata(settings, run_id, status=status)
+        write_trace_metadata(log_path, run_metadata)
+        logger.info("Wrote trace log to %s", log_path)
+
+    if exit_code:
+        raise SystemExit(exit_code)
 
 
 if __name__ == "__main__":

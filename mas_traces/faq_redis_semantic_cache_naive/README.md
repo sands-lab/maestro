@@ -48,7 +48,7 @@ CLI flags:
 | `--skip-redis` | Only run the in-memory cache warm-up |
 | `--llm-rate-limit` | Optional LLM calls per minute throttle (same via `BENCHMARK_LLM_REQUESTS_PER_MIN`) |
 
-The script prints the in-memory cache behavior, loads the full FAQ dataset into Redis, and then replays benchmark questions. Cache misses trigger an OpenAI call whose latency is tracked by `PerfEval`. Every execution also writes a run-specific OpenTelemetry trace (text format) under `logs/` so you can archive or diff runs easily. Use `python ../run_benchmarks.py --benchmark faq_redis_semantic_cache_naive --runs 3` if you want the shared harness to execute repeated runs with timeouts. A sample console log is available in `sample_output.md`.
+The script prints the in-memory cache behavior, loads the full FAQ dataset into Redis, and then replays benchmark questions. Cache misses trigger an OpenAI call whose latency is tracked by `PerfEval`. Every execution also writes a run-specific OpenTelemetry trace (text format) under `logs/` along with a `.metadata.json` sidecar that captures the runtime parameters (LLM model, Redis URL, rate limits, status, etc.) so you can diff runs later—even failed runs still produce metadata. Use `python ../run_benchmarks.py --benchmark faq_redis_semantic_cache_naive --runs 3` if you want the shared harness to execute repeated runs with timeouts. A sample console log is available in `sample_output.md`. Missing metadata for older traces can be backfilled via `python scripts/backfill_trace_metadata.py --logs-dir logs`.
 
 ## 3. Project layout
 
@@ -69,3 +69,7 @@ mas_traces/faq_redis_semantic_cache_naive
 - Point `--redis-url` to a managed Redis deployment to test remote latency
 
 This structure makes it easy to plug the benchmark into CI, perf suites, or MCP-style demos without relying on Jupyter notebooks.
+
+## 5. TODO
+
+- Instrument the Redis server/cache layer with OpenTelemetry so cache operations appear in the traces alongside the Python benchmark spans.
