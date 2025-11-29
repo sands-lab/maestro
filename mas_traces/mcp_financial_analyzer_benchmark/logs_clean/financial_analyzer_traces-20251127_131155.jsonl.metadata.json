@@ -1,0 +1,39 @@
+{
+  "app_name": "enhanced_stock_analyzer",
+  "cli_argv": [
+    "JPMorgan",
+    "--llm-backend",
+    "openai",
+    "--search-providers",
+    "tavily"
+  ],
+  "company": "JPMorgan",
+  "env_overrides": {
+    "FINANCIAL_ANALYZER_SANITY_MODE": "0",
+    "GOOGLE_API_KEY": "***REDACTED***"
+  },
+  "generated_at": "2025-11-27T13:12:01.369530+00:00",
+  "llm_backend": "openai",
+  "llm_canonical_backend": "openai",
+  "llm_model": "gpt-4o",
+  "metadata_version": 1,
+  "news_items_required": 5,
+  "orchestrator_max_iterations": 8,
+  "python_version": "3.10.12 (main, Nov  4 2025, 08:48:33) [GCC 11.4.0]",
+  "report_path": "company_reports/jpmorgan_report_20251127_131155.md",
+  "research_max_refinements": 3,
+  "research_min_rating": "GOOD",
+  "run_id": "20251127_131155",
+  "sanity_mode": false,
+  "search_provider_description": "Tavily",
+  "search_providers_active": [
+    "tavily-search"
+  ],
+  "search_providers_requested": [
+    "tavily"
+  ],
+  "trace_log": "logs/financial_analyzer_traces-20251127_131155.jsonl",
+  "trace_log_basename": "financial_analyzer_traces-20251127_131155.jsonl",
+  "workflow_completed": true,
+  "workflow_status": "ok"
+}

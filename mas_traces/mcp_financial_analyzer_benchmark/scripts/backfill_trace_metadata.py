@@ -31,6 +31,8 @@ def _build_metadata(
     search_providers: list[str],
     search_description: str,
     run_id: str,
+    workflow_status: str,
+    workflow_completed: bool,
 ) -> dict[str, Any]:
     return {
         "metadata_version": METADATA_VERSION,
@@ -43,6 +45,8 @@ def _build_metadata(
         "search_providers_active": search_providers,
         "search_provider_description": search_description,
         "sanity_mode": True,
+        "workflow_status": workflow_status,
+        "workflow_completed": workflow_completed,
         "cli_argv": [],
         "env_overrides": {},
         "notes": "Backfilled metadata (assumed defaults).",
@@ -87,6 +91,24 @@ def main():
         action="store_true",
         help="Overwrite existing metadata files if they already exist.",
     )
+    parser.add_argument(
+        "--status",
+        default="unknown",
+        help="Workflow status string stored in metadata (e.g., ok, failed, unknown).",
+    )
+    parser.add_argument(
+        "--workflow-completed",
+        dest="workflow_completed",
+        action="store_true",
+        help="Mark backfilled traces as completed (default).",
+    )
+    parser.add_argument(
+        "--workflow-incomplete",
+        dest="workflow_completed",
+        action="store_false",
+        help="Mark backfilled traces as missing a completed workflow.",
+    )
+    parser.set_defaults(workflow_completed=True)
     args = parser.parse_args()
 
     logs_dir = os.path.abspath(args.logs_dir)
@@ -115,6 +137,8 @@ def main():
             search_providers=search_chain,
             search_description=search_description,
             run_id=run_id,
+            workflow_status=args.status,
+            workflow_completed=args.workflow_completed,
         )
 
         meta_path = f"{trace_path}.metadata.json"

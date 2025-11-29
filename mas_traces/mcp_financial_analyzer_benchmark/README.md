@@ -88,7 +88,7 @@ python main.py "Apple"
 
 - Reports land in `company_reports/<company>_report_<timestamp>.md`.
 - Traces land in `logs/financial_analyzer_traces-<timestamp>.jsonl`.
-- Metadata sidecars (same name + `.metadata.json`) record CLI args, LLM/search configuration, and environment overrides.
+- Metadata sidecars (same name + `.metadata.json`) record CLI args, LLM/search configuration, environment overrides, and whether the workflow completed successfully (plus any captured error message).
 
 Key environment knobs:
 
@@ -107,6 +107,16 @@ Key environment knobs:
   ```bash
   python scripts/backfill_trace_metadata.py --logs-dir logs
   ```
+
+  Supply `--status failed` or `--workflow-incomplete` if you're recreating metadata for a run that did not finish cleanly.
+
+- **Publishable trace bundle**: create redacted copies of every JSONL/metadata pair without touching the originals.
+
+  ```bash
+  python scripts/sanitize_logs.py --source logs --dest logs_clean
+  ```
+
+  The sanitizer scrubs known key names (e.g., `*_API_KEY`, `authorization`, PEM blocks) and patterns like `sk-...` or `AIza...`, then writes the cleaned files to `logs_clean/`. Share only the sanitized directory; keep `logs/` private.
 
 ---
 

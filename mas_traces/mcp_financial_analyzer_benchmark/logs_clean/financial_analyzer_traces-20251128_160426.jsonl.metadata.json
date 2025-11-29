@@ -1,0 +1,39 @@
+{
+  "app_name": "enhanced_stock_analyzer",
+  "cli_argv": [
+    "Coca-Cola",
+    "--llm-backend",
+    "openai",
+    "--search-providers",
+    "tavily"
+  ],
+  "company": "Coca-Cola",
+  "env_overrides": {
+    "FINANCIAL_ANALYZER_SANITY_MODE": "0",
+    "GOOGLE_API_KEY": "***REDACTED***"
+  },
+  "generated_at": "2025-11-28T16:04:29.414328+00:00",
+  "llm_backend": "openai",
+  "llm_canonical_backend": "openai",
+  "llm_model": "gpt-4o",
+  "metadata_version": 1,
+  "news_items_required": 5,
+  "orchestrator_max_iterations": 8,
+  "python_version": "3.10.12 (main, Nov  4 2025, 08:48:33) [GCC 11.4.0]",
+  "report_path": "company_reports/coca-cola_report_20251128_160426.md",
+  "research_max_refinements": 3,
+  "research_min_rating": "GOOD",
+  "run_id": "20251128_160426",
+  "sanity_mode": false,
+  "search_provider_description": "Tavily",
+  "search_providers_active": [
+    "tavily-search"
+  ],
+  "search_providers_requested": [
+    "tavily"
+  ],
+  "trace_log": "logs/financial_analyzer_traces-20251128_160426.jsonl",
+  "trace_log_basename": "financial_analyzer_traces-20251128_160426.jsonl",
+  "workflow_completed": true,
+  "workflow_status": "ok"
+}

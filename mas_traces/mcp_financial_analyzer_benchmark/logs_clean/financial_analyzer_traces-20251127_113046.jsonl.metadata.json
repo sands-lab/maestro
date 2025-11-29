@@ -1,0 +1,38 @@
+{
+  "app_name": "enhanced_stock_analyzer",
+  "cli_argv": [
+    "Apple",
+    "--llm-backend",
+    "openai",
+    "--search-providers",
+    "tavily"
+  ],
+  "company": "Apple",
+  "env_overrides": {
+    "GOOGLE_API_KEY": "***REDACTED***"
+  },
+  "generated_at": "2025-11-27T11:30:51.705513+00:00",
+  "llm_backend": "openai",
+  "llm_canonical_backend": "openai",
+  "llm_model": "gpt-4o",
+  "metadata_version": 1,
+  "news_items_required": 2,
+  "orchestrator_max_iterations": 3,
+  "python_version": "3.10.12 (main, Nov  4 2025, 08:48:33) [GCC 11.4.0]",
+  "report_path": "company_reports/apple_report_20251127_113046.md",
+  "research_max_refinements": 1,
+  "research_min_rating": "FAIR",
+  "run_id": "20251127_113046",
+  "sanity_mode": true,
+  "search_provider_description": "Tavily",
+  "search_providers_active": [
+    "tavily-search"
+  ],
+  "search_providers_requested": [
+    "tavily"
+  ],
+  "trace_log": "logs/financial_analyzer_traces-20251127_113046.jsonl",
+  "trace_log_basename": "financial_analyzer_traces-20251127_113046.jsonl",
+  "workflow_completed": true,
+  "workflow_status": "ok"
+}

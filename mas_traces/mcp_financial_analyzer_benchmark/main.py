@@ -905,7 +905,9 @@ async def main():
 
             2. Pass the verified notes to 'report_writer' so it produces a concise markdown file at "{output_path}" following the quick snapshot template.
 
-            The goal is to produce trustworthy data with minimal latency—skip deep dives, but do include precise figures and citations."""
+            The goal is to produce trustworthy data with minimal latency—skip deep dives, but do include precise figures and citations.
+
+            After you save the markdown report to "{output_path}", explicitly mark the plan complete (is_complete=true) so the workflow can stop."""
         else:
             task = f"""Create a high-quality stock analysis report for {COMPANY_NAME} by following these steps:
 
@@ -923,11 +925,14 @@ async def main():
             3. Use the report_writer to create a comprehensive stock report and save it to:
                "{output_path}"
             
-            The final report should be professional, fact-based, and include all relevant financial information."""
+            The final report should be professional, fact-based, and include all relevant financial information.
+
+            After you save the markdown report to "{output_path}", explicitly mark the plan complete (is_complete=true) so the workflow can stop."""
 
         # Execute the analysis workflow
         logger.info("Starting the stock analysis workflow")
         run_succeeded = False
+        workflow_error: str | None = None
         try:
             orchestrator_params = RequestParams(
                 model=model_name,
@@ -950,7 +955,8 @@ async def main():
             run_succeeded = True
 
         except Exception as e:
-            logger.error(f"Error during workflow execution: {str(e)}")
+            workflow_error = str(e)
+            logger.error(f"Error during workflow execution: {workflow_error}")
         finally:
             new_trace_logs = sorted(_current_trace_logs() - existing_trace_logs)
             if not new_trace_logs:
@@ -960,6 +966,16 @@ async def main():
                     "Trace logs detected but base metadata was never initialized; skipping metadata write."
                 )
             else:
+                run_metadata["workflow_status"] = "ok" if run_succeeded else "failed"
+                run_metadata["workflow_completed"] = run_succeeded
+                if workflow_error:
+                    run_metadata["workflow_error"] = workflow_error
+                else:
+                    run_metadata.pop("workflow_error", None)
+                logger.info(
+                    "Workflow finished with status '%s'; writing metadata sidecars.",
+                    run_metadata["workflow_status"],
+                )
                 _write_trace_metadata(logger, new_trace_logs, run_metadata, output_path)
 
         return run_succeeded
