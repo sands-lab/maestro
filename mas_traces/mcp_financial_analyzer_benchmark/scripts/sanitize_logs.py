@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -37,6 +38,49 @@ PATTERN_REPLACEMENTS: Iterable[tuple[re.Pattern[str], str]] = (
 )
 
 
+LOG_TIMESTAMP_PATTERN = re.compile(r"(\\d{8}_\\d{6})")
+FILTER_FORMATS = ("%Y%m%d", "%Y%m%d_%H%M%S")
+
+
+def parse_filter_datetime(value: str | None) -> datetime | None:
+    """Convert CLI date filters into datetime objects."""
+    if value is None:
+        return None
+    for fmt in FILTER_FORMATS:
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    raise argparse.ArgumentTypeError(
+        f"Invalid date '{value}'. Expected formats: YYYYMMDD or YYYYMMDD_HHMMSS"
+    )
+
+
+def extract_timestamp_from_name(path: Path) -> datetime | None:
+    """Return datetime embedded inside known log filenames."""
+    match = LOG_TIMESTAMP_PATTERN.search(path.name)
+    if not match:
+        return None
+    try:
+        return datetime.strptime(match.group(1), "%Y%m%d_%H%M%S")
+    except ValueError:
+        return None
+
+
+def should_include_file(path: Path, start: datetime | None, end: datetime | None) -> bool:
+    """Decide whether a file should be sanitized based on requested date filters."""
+    if start is None and end is None:
+        return True
+    timestamp = extract_timestamp_from_name(path)
+    if timestamp is None:
+        return False
+    if start and timestamp < start:
+        return False
+    if end and timestamp > end:
+        return False
+    return True
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Copy trace logs to a new directory with sensitive data removed."
@@ -50,6 +94,16 @@ def parse_args() -> argparse.Namespace:
         "--dest",
         default="logs_clean",
         help="Directory to write sanitized copies (default: logs_clean)",
+    )
+    parser.add_argument(
+        "--start-date",
+        type=parse_filter_datetime,
+        help="Only sanitize files whose timestamp is on/after this date (YYYYMMDD or YYYYMMDD_HHMMSS)",
+    )
+    parser.add_argument(
+        "--end-date",
+        type=parse_filter_datetime,
+        help="Only sanitize files whose timestamp is on/before this date (YYYYMMDD or YYYYMMDD_HHMMSS)",
     )
     return parser.parse_args()
 
@@ -102,13 +156,21 @@ def sanitize_json_file(src: Path, dest: Path) -> None:
     dest.write_text(json.dumps(scrubbed, indent=2, ensure_ascii=False) + "\n")
 
 
-def sanitize_logs(source_dir: Path, dest_dir: Path) -> None:
+def sanitize_logs(
+    source_dir: Path,
+    dest_dir: Path,
+    *,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> None:
     if dest_dir.exists():
         shutil.rmtree(dest_dir)
     dest_dir.mkdir(parents=True)
 
     for path in sorted(source_dir.rglob("*")):
         if path.is_dir():
+            continue
+        if not should_include_file(path, start_date, end_date):
             continue
         relative = path.relative_to(source_dir)
         dest_file = dest_dir / relative
@@ -132,7 +194,12 @@ def main() -> None:
 
     if not source_dir.exists():
         raise SystemExit(f"Source directory not found: {source_dir}")
-    sanitize_logs(source_dir, dest_dir)
+    sanitize_logs(
+        source_dir,
+        dest_dir,
+        start_date=args.start_date,
+        end_date=args.end_date,
+    )
 
 
 if __name__ == "__main__":

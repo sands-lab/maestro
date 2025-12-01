@@ -116,7 +116,15 @@ Key environment knobs:
   python scripts/sanitize_logs.py --source logs --dest logs_clean
   ```
 
-  The sanitizer scrubs known key names (e.g., `*_API_KEY`, `authorization`, PEM blocks) and patterns like `sk-...` or `AIza...`, then writes the cleaned files to `logs_clean/`. Share only the sanitized directory; keep `logs/` private.
+  The sanitizer scrubs known key names (e.g., `*_API_KEY`, `authorization`, PEM blocks) and patterns like `sk-...` or `AIza...`, then writes the cleaned files to `logs_clean/`. Share only the sanitized directory; keep `logs/` private. Pass `--start-date YYYYMMDD` and/or `--end-date YYYYMMDD` (optionally add `_HHMMSS`) to limit which trace timestamps are processed, e.g.:
+
+  ```bash
+  python scripts/sanitize_logs.py \
+    --source logs \
+    --dest logs_clean \
+    --start-date 20251201 \
+    --end-date 20251201
+  ```
 
 ---
 
