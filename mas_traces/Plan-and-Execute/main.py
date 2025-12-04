@@ -10,6 +10,7 @@ import operator
 import os
 import sys
 import warnings
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +22,14 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import create_react_agent
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import (
+    SimpleSpanProcessor,
+    SpanExporter,
+    SpanExportResult,
+)
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
@@ -36,6 +45,60 @@ LOG_DIR = Path(__file__).resolve().parent / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_OBJECTIVE = "what is the hometown of the mens 2024 Australia open winner?"
 RUN_METADATA_VERSION = 1
+APP_NAME = "plan_and_execute_benchmark"
+TRACE_SERVICE_NAME = "plan-and-execute"
+
+
+class FileSpanExporter(SpanExporter):
+    """Write OpenTelemetry spans to a JSONL file under logs/."""
+
+    def __init__(self, destination: Path) -> None:
+        self.destination = destination
+
+    def export(self, spans) -> SpanExportResult:
+        lines = []
+        for span in spans:
+            payload = {
+                "name": span.name,
+                "context": {
+                    "trace_id": format(span.context.trace_id, "032x"),
+                    "span_id": format(span.context.span_id, "016x"),
+                },
+                "start_time": span.start_time,
+                "end_time": span.end_time,
+                "status": span.status.status_code.name,
+                "attributes": dict(span.attributes),
+            }
+            lines.append(json.dumps(payload))
+
+        with self.destination.open("a", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
+
+        return SpanExportResult.SUCCESS
+
+    def shutdown(self) -> None:  # pragma: no cover - nothing to clean
+        return None
+
+
+def setup_tracer(run_id: str) -> tuple[trace.Tracer, Path, TracerProvider]:
+    """Configure an OTEL tracer that writes spans to logs/run_<run_id>.otel.jsonl."""
+    LOG_DIR.mkdir(exist_ok=True)
+    log_path = LOG_DIR / f"run_{run_id}.otel.jsonl"
+    log_path.touch(exist_ok=True)
+    resource = Resource.create({"service.name": TRACE_SERVICE_NAME})
+    provider = TracerProvider(resource=resource)
+    exporter = FileSpanExporter(log_path)
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+    tracer = trace.get_tracer(APP_NAME)
+    return tracer, log_path, provider
+
+
+def _relative_path(path: Path) -> str:
+    try:
+        return os.path.relpath(path, start=LOG_DIR.parent)
+    except ValueError:  # pragma: no cover - fallback for different drives
+        return str(path)
 
 
 class PlanExecute(TypedDict):
@@ -228,26 +291,51 @@ def _summarize_event(node: str, payload) -> str:
     return f"{node}: {payload}"
 
 
-def _stream_events(app, config: BenchmarkConfig, log_handle):
+def _stream_events(app, config: BenchmarkConfig, log_handle, tracer: trace.Tracer | None = None):
     """Return coroutine that runs the benchmark and logs every event."""
 
     async def _runner():
         final_response = None
-        async for event in app.astream(
-            {"input": config.question}, config={"recursion_limit": config.recursion_limit}
-        ):
-            for node, payload in event.items():
-                record = {
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "node": node,
-                    "payload": _jsonable(payload),
-                }
-                log_handle.write(json.dumps(record) + "\n")
-                log_handle.flush()
-                if config.verbose:
-                    LOGGER.info(_summarize_event(node, payload))
-                if node == "__end__":
-                    final_response = payload.get("response")
+        run_attrs = {
+            "question": config.question,
+            "executor_model": config.executor_model,
+            "planner_model": config.planner_model,
+            "replanner_model": config.replanner_model,
+            "max_search_results": config.max_search_results,
+            "agent_temperature": config.agent_temperature,
+        }
+        run_span = (
+            tracer.start_as_current_span("plan_execute_run", attributes=run_attrs)
+            if tracer
+            else nullcontext()
+        )
+        with run_span:
+            async for event in app.astream(
+                {"input": config.question}, config={"recursion_limit": config.recursion_limit}
+            ):
+                for node, payload in event.items():
+                    record = {
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "node": node,
+                        "payload": _jsonable(payload),
+                    }
+                    log_handle.write(json.dumps(record) + "\n")
+                    log_handle.flush()
+                    node_attrs = {"node": node}
+                    if node == "planner" and isinstance(payload, dict) and "plan" in payload:
+                        node_attrs["plan_length"] = len(payload["plan"])
+                    if node == "replan" and isinstance(payload, dict) and payload.get("response"):
+                        node_attrs["response_length"] = len(payload["response"])
+                    node_span = (
+                        tracer.start_as_current_span(f"node.{node}", attributes=node_attrs)
+                        if tracer
+                        else nullcontext()
+                    )
+                    with node_span:
+                        if config.verbose:
+                            LOGGER.info(_summarize_event(node, payload))
+                    if node == "__end__":
+                        final_response = payload.get("response")
         return final_response
 
     return _runner()
@@ -277,11 +365,15 @@ def _write_metadata(path: Path, run_id: str, config: BenchmarkConfig, status: st
     path.write_text(json.dumps(metadata, indent=2))
 
 
-async def run_benchmark(config: BenchmarkConfig) -> str | None:
+async def run_benchmark(
+    config: BenchmarkConfig,
+    run_id: str,
+    tracer: trace.Tracer | None = None,
+    trace_log_path: Path | None = None,
+) -> str | None:
     """Entry point used by asyncio.run."""
     ensure_env_vars()
     app = build_plan_execute_app(config)
-    run_id = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     log_path = LOG_DIR / f"run_{run_id}.jsonl"
     metadata_path = LOG_DIR / f"run_{run_id}.metadata.json"
     status = "unknown"
@@ -290,7 +382,7 @@ async def run_benchmark(config: BenchmarkConfig) -> str | None:
 
     try:
         with log_path.open("w", encoding="utf-8") as log_handle:
-            final_response = await _stream_events(app, config, log_handle)
+            final_response = await _stream_events(app, config, log_handle, tracer=tracer)
         status = "success"
         return final_response
     except Exception as exc:
@@ -305,6 +397,8 @@ async def run_benchmark(config: BenchmarkConfig) -> str | None:
             status=status,
             final_response=final_response,
             error=error_message,
+            event_log=_relative_path(log_path),
+            trace_log=_relative_path(trace_log_path) if trace_log_path else None,
         )
 
 
@@ -376,8 +470,22 @@ def parse_args(argv: List[str] | None = None) -> BenchmarkConfig:
 
 def main():
     config = parse_args()
+    run_id = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    tracer = None
+    trace_log_path = None
+    provider = None
     try:
-        final_answer = asyncio.run(run_benchmark(config))
+        tracer, trace_log_path, provider = setup_tracer(run_id)
+        LOGGER.info("OpenTelemetry trace log: %s", trace_log_path)
+    except Exception as exc:  # pragma: no cover - tracing is optional
+        LOGGER.warning("Unable to initialize OpenTelemetry tracing: %s", exc)
+        tracer = None
+        trace_log_path = None
+        provider = None
+    try:
+        final_answer = asyncio.run(
+            run_benchmark(config, run_id, tracer=tracer, trace_log_path=trace_log_path)
+        )
     except KeyboardInterrupt:
         LOGGER.warning("Benchmark interrupted by user.")
         return
@@ -388,6 +496,9 @@ def main():
             LOGGER.info("Final response: %s", final_answer)
         else:
             LOGGER.info("Benchmark finished but no response was produced.")
+    finally:
+        if provider:
+            provider.shutdown()
 
 
 if __name__ == "__main__":

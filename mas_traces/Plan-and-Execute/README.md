@@ -4,7 +4,7 @@ This directory turns the original `Plan-and-Execute.ipynb` notebook into a runna
 
 1. `ChatOpenAI` for the planner, executor, and re-planner roles
 2. `TavilySearchResults` as the external search tool surfaced to the agent
-3. The LangGraph compiler to orchestrate planner, executor, and re-planner nodes.
+3. The LangGraph compiler to orchestrate planner, executor, and re-planner nodes with optional OpenTelemetry spans emitted per run.
 
 Every CLI run writes node-by-node logs under `logs/` (JSONL) together with a `.metadata.json` sidecar that captures the question, model choices, recursion limit, and success/failure status so benchmark runs can be replayed or diffed later.
 
@@ -66,8 +66,9 @@ mas_traces/Plan-and-Execute
 └── sample_output.md         # Captured run to verify expectations
 ```
 
+- `logs/run_YYYYMMDD_HHMMSS.otel.jsonl` – OpenTelemetry spans for the run (suppressed if OTEL init fails)
 - `logs/run_YYYYMMDD_HHMMSS.jsonl` – ordered LangGraph node emissions
-- `logs/run_YYYYMMDD_HHMMSS.metadata.json` – CLI arguments, env presence, and success status
+- `logs/run_YYYYMMDD_HHMMSS.metadata.json` – CLI arguments, env presence, and pointers to the event/trace artefacts
 
 ## 4. Integrating with other harnesses
 
