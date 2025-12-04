@@ -9,7 +9,7 @@ This directory converts the LangChain `lats.ipynb` tutorial into a repeatable CL
                   └──────────────────┘   └───────────┘   └───────────────┘
                                                          │
                                                          ▼
-                                    logs/run_<ts>.log + run_<ts>.metadata.json
+                        logs/run_<ts>.log + run_<ts>.metadata.json + run_<ts>.otel.jsonl
 ```
 
 ## 1. Environment setup
@@ -37,7 +37,7 @@ python main.py \
   --questions-file data/questions.csv
 ```
 
-Each run writes `logs/run_<timestamp>.log` (human-readable stream of graph events) and a matching JSON metadata file with the CLI arguments, dataset source, runtime, whether the question was solved, and the best trajectory response. You can also invoke this benchmark via the shared runner: `python ../run_benchmarks.py --benchmark language_agent_tree_search`.
+Each run now writes `logs/run_<timestamp>.log` (human-readable stream of graph events), `logs/run_<timestamp>.metadata.json`, **and** `logs/run_<timestamp>.otel.jsonl` containing OpenTelemetry spans so you can inspect the LangGraph execution in tracing backends. You can also invoke this benchmark via the shared runner: `python ../run_benchmarks.py --benchmark language_agent_tree_search`.
 
 ### CLI flags
 

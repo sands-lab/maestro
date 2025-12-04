@@ -7,9 +7,11 @@ import csv
 import json
 import logging
 import math
+import os
 import sys
 import time
 from collections import defaultdict, deque
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,6 +30,14 @@ from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.utilities.tavily_search import TavilySearchAPIWrapper
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import (
+    SimpleSpanProcessor,
+    SpanExporter,
+    SpanExportResult,
+)
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
@@ -39,6 +49,52 @@ BENCHMARK_ROOT = Path(__file__).resolve().parent
 DEFAULT_DATASET = BENCHMARK_ROOT / "data" / "questions.csv"
 LOG_DIR = BENCHMARK_ROOT / "logs"
 METADATA_VERSION = 1
+TRACE_SERVICE_NAME = "language-agent-tree-search"
+
+
+class FileSpanExporter(SpanExporter):
+    """Writes OpenTelemetry spans to a JSONL file under logs/."""
+
+    def __init__(self, destination: Path) -> None:
+        self.destination = destination
+
+    def export(self, spans) -> SpanExportResult:
+        lines = []
+        for span in spans:
+            payload = {
+                "name": span.name,
+                "context": {
+                    "trace_id": format(span.context.trace_id, "032x"),
+                    "span_id": format(span.context.span_id, "016x"),
+                },
+                "start_time": span.start_time,
+                "end_time": span.end_time,
+                "status": span.status.status_code.name,
+                "attributes": dict(span.attributes),
+            }
+            lines.append(json.dumps(payload))
+
+        with self.destination.open("a", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
+
+        return SpanExportResult.SUCCESS
+
+    def shutdown(self) -> None:  # pragma: no cover - nothing to clean up
+        return None
+
+
+def setup_tracer(run_id: str) -> tuple[trace.Tracer, Path, TracerProvider]:
+    """Configure OpenTelemetry tracing and return the tracer + log path."""
+    LOG_DIR.mkdir(exist_ok=True, parents=True)
+    trace_path = LOG_DIR / f"run_{run_id}.otel.jsonl"
+    trace_path.touch(exist_ok=True)
+    resource = Resource.create({"service.name": TRACE_SERVICE_NAME})
+    provider = TracerProvider(resource=resource)
+    exporter = FileSpanExporter(trace_path)
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+    tracer = trace.get_tracer(APP_NAME)
+    return tracer, trace_path, provider
 
 
 class Reflection(BaseModel):
@@ -448,36 +504,57 @@ def run_question(
     question: str,
     index: int,
     branching_factor: int,
+    tracer: trace.Tracer | None = None,
 ) -> RunResult:
     events: List[str] = []
     config = {"configurable": {"N": branching_factor}}
     start = time.perf_counter()
     root_node: Optional[Node] = None
-    try:
-        for event in graph.stream({"input": question}, config=config):
-            summary = _summarize_event(event)
-            events.append(summary)
-            print(f"  {summary}", flush=True)
-            for payload in event.values():
-                if isinstance(payload, dict):
-                    maybe_root = payload.get("root")
-                    if isinstance(maybe_root, Node):
-                        root_node = maybe_root
-    except Exception as exc:
-        duration = time.perf_counter() - start
-        logger.error("Graph execution failed for question %s: %s", index, exc)
-        return RunResult(
-            index=index,
-            question=question,
-            solved=False,
-            height=0,
-            visits=0,
-            duration=duration,
-            best_response=None,
-            reflection_score=None,
-            events=events,
-            error=str(exc),
-        )
+    span_attrs = {
+        "question_index": index,
+        "branching_factor": branching_factor,
+        "question": question,
+    }
+    run_span = (
+        tracer.start_as_current_span("lats.question", attributes=span_attrs)
+        if tracer
+        else nullcontext()
+    )
+    with run_span:
+        try:
+            for event in graph.stream({"input": question}, config=config):
+                summary = _summarize_event(event)
+                events.append(summary)
+                for node_name, payload in event.items():
+                    node_attrs = {"node": node_name}
+                    node_span = (
+                        tracer.start_as_current_span(
+                            f"lats.node.{node_name}", attributes=node_attrs
+                        )
+                        if tracer
+                        else nullcontext()
+                    )
+                    with node_span:
+                        if isinstance(payload, dict):
+                            maybe_root = payload.get("root")
+                            if isinstance(maybe_root, Node):
+                                root_node = maybe_root
+                print(f"  {summary}", flush=True)
+        except Exception as exc:
+            duration = time.perf_counter() - start
+            logger.error("Graph execution failed for question %s: %s", index, exc)
+            return RunResult(
+                index=index,
+                question=question,
+                solved=False,
+                height=0,
+                visits=0,
+                duration=duration,
+                best_response=None,
+                reflection_score=None,
+                events=events,
+                error=str(exc),
+            )
 
     duration = time.perf_counter() - start
     if not root_node:
@@ -524,11 +601,12 @@ def write_run_artifacts(
     results: List[RunResult],
     args: argparse.Namespace,
     dataset_source: str,
+    run_id: str,
+    trace_log_path: Optional[Path],
 ) -> None:
     LOG_DIR.mkdir(exist_ok=True, parents=True)
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    log_path = LOG_DIR / f"run_{timestamp}.log"
-    metadata_path = LOG_DIR / f"run_{timestamp}.metadata.json"
+    log_path = LOG_DIR / f"run_{run_id}.log"
+    metadata_path = LOG_DIR / f"run_{run_id}.metadata.json"
 
     with log_path.open("w", encoding="utf-8") as handle:
         for result in results:
@@ -543,7 +621,7 @@ def write_run_artifacts(
     metadata = {
         "metadata_version": METADATA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "run_id": log_path.stem.split("run_", 1)[-1],
+        "run_id": run_id,
         "app_name": APP_NAME,
         "python_version": sys.version,
         "cli_argv": sys.argv[1:],
@@ -555,6 +633,13 @@ def write_run_artifacts(
         "tavily_max_results": args.tavily_max_results,
         "questions": [result.to_metadata() for result in results],
     }
+    if trace_log_path:
+        try:
+            rel_path = os.path.relpath(trace_log_path, start=BENCHMARK_ROOT)
+        except ValueError:
+            rel_path = str(trace_log_path)
+        metadata["trace_log"] = rel_path
+        metadata["trace_log_basename"] = trace_log_path.name
     metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     logger.info("Wrote %s and %s", log_path.name, metadata_path.name)
 
@@ -614,36 +699,59 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    dataset_path = Path(args.questions_file)
-    questions = load_questions(dataset_path)
-    if not questions:
-        raise SystemExit(f"No questions found in {dataset_path}")
-    if args.start_index >= len(questions):
-        raise SystemExit("Start index exceeds dataset length.")
-    end = min(len(questions), args.start_index + args.num_questions)
-    selected = [
-        (i, question)
-        for i, question in enumerate(questions[args.start_index:end], start=args.start_index)
-    ]
-    graph = build_graph(
-        model=args.model,
-        temperature=args.temperature,
-        tavily_max_results=args.tavily_max_results,
-        max_depth=max(args.max_depth, 1),
-    )
-
-    results: List[RunResult] = []
-    for dataset_index, question in selected:
-        logger.info("Running question %s: %s", dataset_index, question)
-        result = run_question(
-            graph=graph,
-            question=question,
-            index=dataset_index,
-            branching_factor=args.branching_factor,
+    run_id = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    tracer: Optional[trace.Tracer] = None
+    trace_log_path: Optional[Path] = None
+    provider: Optional[TracerProvider] = None
+    try:
+        tracer, trace_log_path, provider = setup_tracer(run_id)
+        logger.info("OpenTelemetry trace log: %s", trace_log_path)
+    except Exception as exc:  # pragma: no cover - tracing is optional
+        logger.warning("Unable to initialize OpenTelemetry tracing: %s", exc)
+        tracer = None
+        trace_log_path = None
+        provider = None
+    try:
+        dataset_path = Path(args.questions_file)
+        questions = load_questions(dataset_path)
+        if not questions:
+            raise SystemExit(f"No questions found in {dataset_path}")
+        if args.start_index >= len(questions):
+            raise SystemExit("Start index exceeds dataset length.")
+        end = min(len(questions), args.start_index + args.num_questions)
+        selected = [
+            (i, question)
+            for i, question in enumerate(questions[args.start_index:end], start=args.start_index)
+        ]
+        graph = build_graph(
+            model=args.model,
+            temperature=args.temperature,
+            tavily_max_results=args.tavily_max_results,
+            max_depth=max(args.max_depth, 1),
         )
-        results.append(result)
 
-    write_run_artifacts(results, args, dataset_source=str(dataset_path))
+        results: List[RunResult] = []
+        for dataset_index, question in selected:
+            logger.info("Running question %s: %s", dataset_index, question)
+            result = run_question(
+                graph=graph,
+                question=question,
+                index=dataset_index,
+                branching_factor=args.branching_factor,
+                tracer=tracer,
+            )
+            results.append(result)
+
+        write_run_artifacts(
+            results,
+            args,
+            dataset_source=str(dataset_path),
+            run_id=run_id,
+            trace_log_path=trace_log_path,
+        )
+    finally:
+        if provider:
+            provider.shutdown()
 
 
 if __name__ == "__main__":
