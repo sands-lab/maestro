@@ -6,6 +6,7 @@ import argparse
 import csv
 import json
 import logging
+import operator
 import os
 import sys
 import time
@@ -15,8 +16,6 @@ from io import StringIO
 from pathlib import Path
 from typing import Dict, List, Literal, NamedTuple, Optional, Sequence, Union
 
-import operator
-
 import requests
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -24,6 +23,15 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import StateGraph
 from langgraph.runtime import Runtime
 from langgraph.types import Send
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import (
+    SimpleSpanProcessor,
+    SpanExporter,
+    SpanExportResult,
+)
+from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated, TypedDict
 
@@ -35,12 +43,57 @@ DEFAULT_DATASET_URL = (
 )
 LOG_DIR = BENCHMARK_ROOT / "logs"
 METADATA_VERSION = 1
+TRACE_SERVICE_NAME = "tree-of-thoughts-benchmark"
 
 logger = logging.getLogger("tree-of-thoughts-benchmark")
 
 
 OperatorType = Literal["+", "-", "*", "/"]
 TokenType = Union[float, OperatorType]
+
+
+class FileSpanExporter(SpanExporter):
+    """Writes OpenTelemetry spans to a JSONL file."""
+
+    def __init__(self, file_path: Path) -> None:
+        self.file_path = file_path
+
+    def export(self, spans) -> SpanExportResult:
+        lines: List[str] = []
+        for span in spans:
+            data = {
+                "name": span.name,
+                "context": {
+                    "trace_id": format(span.context.trace_id, "032x"),
+                    "span_id": format(span.context.span_id, "016x"),
+                },
+                "start_time": span.start_time,
+                "end_time": span.end_time,
+                "status": span.status.status_code.name,
+                "attributes": dict(span.attributes),
+            }
+            lines.append(json.dumps(data))
+        with self.file_path.open("a", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
+        return SpanExportResult.SUCCESS
+
+    def shutdown(self) -> None:  # pragma: no cover - nothing to clean up
+        return None
+
+
+def setup_tracer() -> tuple[trace.Tracer, Path, TracerProvider, str]:
+    """Configure OpenTelemetry tracing and return the tracer, log path, and run id."""
+    LOG_DIR.mkdir(exist_ok=True)
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    trace_path = LOG_DIR / f"run_{timestamp}.otel.jsonl"
+    trace_path.touch(exist_ok=True)
+    resource = Resource.create({"service.name": TRACE_SERVICE_NAME})
+    provider = TracerProvider(resource=resource)
+    exporter = FileSpanExporter(trace_path)
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+    tracer = trace.get_tracer("tree-of-thoughts")
+    return tracer, trace_path, provider, timestamp
 
 
 class Equation(BaseModel):
@@ -336,6 +389,18 @@ def _read_puzzles_from_text(text: str) -> List[str]:
     return puzzles
 
 
+def _determine_run_status(results: List[RunResult]) -> str:
+    if not results:
+        return "no_puzzles"
+    if any(result.error for result in results):
+        return "error"
+    if all(result.solved for result in results):
+        return "ok"
+    if any(result.solved for result in results):
+        return "partial"
+    return "unsolved"
+
+
 def load_puzzles(
     dataset_file: Optional[Path], dataset_url: Optional[str]
 ) -> tuple[List[str], str]:
@@ -384,74 +449,93 @@ def run_problem(
     puzzle: str,
     index: int,
     ctx: EnsuredContext,
+    tracer: trace.Tracer,
 ) -> RunResult:
     thread_id = f"tot_{index}_{int(time.time() * 1000)}"
     events: List[str] = []
-    start = time.perf_counter()
-    try:
-        for event in graph.stream(
-            {"problem": puzzle},
-            config={"configurable": {"thread_id": thread_id}},
-            context=ctx,
-        ):
-            summary = _summarize_event(event)
-            events.append(summary)
-            print(f"  {summary}", flush=True)
-    except Exception as exc:
+    with tracer.start_as_current_span(
+        "tot.problem",
+        attributes={
+            "tot.puzzle_index": index,
+            "tot.puzzle": puzzle,
+            "tot.thread_id": thread_id,
+        },
+    ) as span:
+        start = time.perf_counter()
+        try:
+            for event in graph.stream(
+                {"problem": puzzle},
+                config={"configurable": {"thread_id": thread_id}},
+                context=ctx,
+            ):
+                summary = _summarize_event(event)
+                events.append(summary)
+                print(f"  {summary}", flush=True)
+        except Exception as exc:
+            duration = time.perf_counter() - start
+            logger.error("Graph execution failed for puzzle %s: %s", index, exc)
+            span.record_exception(exc)
+            span.set_status(Status(StatusCode.ERROR, str(exc)))
+            return RunResult(
+                index=index,
+                puzzle=puzzle,
+                solved=False,
+                best_score=0.0,
+                depth=0,
+                duration=duration,
+                equation=None,
+                feedback=None,
+                stream_events=events,
+                error=str(exc),
+            )
+        snapshot = graph.get_state({"configurable": {"thread_id": thread_id}})
+        delete_state = getattr(graph, "delete_state", None)
+        if callable(delete_state):
+            delete_state({"configurable": {"thread_id": thread_id}})
         duration = time.perf_counter() - start
-        logger.error("Graph execution failed for puzzle %s: %s", index, exc)
-        return RunResult(
-            index=index,
-            puzzle=puzzle,
-            solved=False,
-            best_score=0.0,
-            depth=0,
-            duration=duration,
-            equation=None,
-            feedback=None,
-            stream_events=events,
-            error=str(exc),
+        values = snapshot.values or {}
+        depth = int(values.get("depth") or 0)
+        candidates: List[ScoredCandidate] = values.get("candidates") or []
+        if not candidates:
+            events.append("No candidates survived pruning.")
+            span.set_attribute("tot.best_score", 0.0)
+            span.set_attribute("tot.depth", depth)
+            span.set_attribute("tot.solved", False)
+            span.set_attribute("tot.duration_seconds", duration)
+            return RunResult(
+                index=index,
+                puzzle=puzzle,
+                solved=False,
+                best_score=0.0,
+                depth=depth,
+                duration=duration,
+                equation=None,
+                feedback=None,
+                stream_events=events,
+            )
+        top = candidates[0]
+        best_score = float(top.score or 0.0)
+        solved = best_score >= ctx["threshold"]
+        equation = _format_equation(top.candidate.tokens)
+        feedback = top.feedback
+        events.append(
+            f"Final depth={depth}, best_score={best_score:.3f}, equation={equation}"
         )
-    snapshot = graph.get_state({"configurable": {"thread_id": thread_id}})
-    delete_state = getattr(graph, "delete_state", None)
-    if callable(delete_state):
-        delete_state({"configurable": {"thread_id": thread_id}})
-    duration = time.perf_counter() - start
-    values = snapshot.values or {}
-    depth = int(values.get("depth") or 0)
-    candidates: List[ScoredCandidate] = values.get("candidates") or []
-    if not candidates:
-        events.append("No candidates survived pruning.")
+        span.set_attribute("tot.best_score", best_score)
+        span.set_attribute("tot.depth", depth)
+        span.set_attribute("tot.solved", solved)
+        span.set_attribute("tot.duration_seconds", duration)
         return RunResult(
             index=index,
             puzzle=puzzle,
-            solved=False,
-            best_score=0.0,
+            solved=solved,
+            best_score=best_score,
             depth=depth,
             duration=duration,
-            equation=None,
-            feedback=None,
+            equation=equation,
+            feedback=feedback,
             stream_events=events,
         )
-    top = candidates[0]
-    best_score = float(top.score or 0.0)
-    solved = best_score >= ctx["threshold"]
-    equation = _format_equation(top.candidate.tokens)
-    feedback = top.feedback
-    events.append(
-        f"Final depth={depth}, best_score={best_score:.3f}, equation={equation}"
-    )
-    return RunResult(
-        index=index,
-        puzzle=puzzle,
-        solved=solved,
-        best_score=best_score,
-        depth=depth,
-        duration=duration,
-        equation=equation,
-        feedback=feedback,
-        stream_events=events,
-    )
 
 
 def write_run_artifacts(
@@ -459,25 +543,31 @@ def write_run_artifacts(
     ctx: EnsuredContext,
     args: argparse.Namespace,
     dataset_source: str,
+    run_id: str,
+    trace_log_path: Path,
+    status: str,
 ) -> None:
     LOG_DIR.mkdir(exist_ok=True)
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    log_path = LOG_DIR / f"run_{timestamp}.log"
-    metadata_path = LOG_DIR / f"run_{timestamp}.metadata.json"
+    log_path = LOG_DIR / f"run_{run_id}.log"
+    metadata_path = LOG_DIR / f"run_{run_id}.metadata.json"
     with log_path.open("w", encoding="utf-8") as handle:
         for result in results:
-            status = "solved" if result.solved else "failed"
+            result_status = "solved" if result.solved else "failed"
             handle.write(
-                f"[{result.index}] {result.puzzle} -> {status} "
+                f"[{result.index}] {result.puzzle} -> {result_status} "
                 f"(score={result.best_score:.3f}, depth={result.depth}, "
                 f"duration={result.duration:.2f}s)\n"
             )
             for event in result.stream_events:
                 handle.write(f"  {event}\n")
+    try:
+        rel_trace = os.path.relpath(trace_log_path, start=BENCHMARK_ROOT)
+    except ValueError:
+        rel_trace = str(trace_log_path)
     metadata = {
         "metadata_version": METADATA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "run_id": log_path.stem.split("run_", 1)[-1],
+        "run_id": run_id,
         "app_name": APP_NAME,
         "python_version": sys.version,
         "cli_argv": sys.argv[1:],
@@ -485,6 +575,8 @@ def write_run_artifacts(
         "model": args.model,
         "temperature": args.temperature,
         "search_context": ctx,
+        "status": status,
+        "trace_log": rel_trace,
         "problems": [result.to_metadata() for result in results],
     }
     metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
@@ -580,6 +672,7 @@ def main() -> None:
     if not os.getenv("OPENAI_API_KEY"):
         raise EnvironmentError("OPENAI_API_KEY environment variable is not set.")
 
+    tracer, trace_log_path, provider, run_id = setup_tracer()
     solver = build_solver(args.model, args.temperature, args.max_tokens)
     graph = build_graph(solver)
     search_ctx: EnsuredContext = {
@@ -598,21 +691,51 @@ def main() -> None:
         search_ctx,
     )
 
-    results = []
-    for index, puzzle in slice_with_indexes:
-        logger.info("Puzzle %s -> %s", index, puzzle)
-        result = run_problem(graph, puzzle, index, search_ctx)
-        logger.info(
-            "Puzzle %s %s (score=%.3f depth=%s duration=%.2fs)",
-            index,
-            "solved" if result.solved else "failed",
-            result.best_score,
-            result.depth,
-            result.duration,
-        )
-        results.append(result)
+    results: List[RunResult] = []
+    run_status = "unknown"
+    try:
+        with tracer.start_as_current_span(
+            "tot.run",
+            attributes={
+                "tot.model": args.model,
+                "tot.temperature": args.temperature,
+                "tot.problem_index": args.problem_index,
+                "tot.requested_puzzles": args.num_puzzles,
+                "tot.dataset_source": dataset_source,
+            },
+        ) as run_span:
+            for index, puzzle in slice_with_indexes:
+                logger.info("Puzzle %s -> %s", index, puzzle)
+                result = run_problem(graph, puzzle, index, search_ctx, tracer)
+                logger.info(
+                    "Puzzle %s %s (score=%.3f depth=%s duration=%.2fs)",
+                    index,
+                    "solved" if result.solved else "failed",
+                    result.best_score,
+                    result.depth,
+                    result.duration,
+                )
+                results.append(result)
+            run_status = _determine_run_status(results)
+            run_span.set_attribute("tot.status", run_status)
+            run_span.set_attribute("tot.total_runs", len(results))
+            run_span.set_attribute(
+                "tot.solved_runs", sum(1 for result in results if result.solved)
+            )
+            if run_status != "ok":
+                run_span.set_status(Status(StatusCode.ERROR, run_status))
+    finally:
+        provider.shutdown()
 
-    write_run_artifacts(results, search_ctx, args, dataset_source)
+    write_run_artifacts(
+        results,
+        search_ctx,
+        args,
+        dataset_source,
+        run_id,
+        trace_log_path,
+        run_status,
+    )
 
 
 if __name__ == "__main__":

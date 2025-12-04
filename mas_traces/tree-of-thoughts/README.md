@@ -23,6 +23,7 @@ Set the required credentials before running:
 
 - `OPENAI_API_KEY` – used by `langchain-openai` for the expander model
 - (Optional) `LANGSMITH_API_KEY` and `LANGSMITH_PROJECT` if you want LangSmith traces
+- OpenTelemetry dependencies are baked into `requirements.txt`, so installing those packages will enable the on-disk trace exporter (`logs/run_<timestamp>.otel.jsonl`).
 
 ## 2. Run the benchmark
 
@@ -36,7 +37,7 @@ python main.py \
   --max-tokens 1024
 ```
 
-Each run writes `logs/run_<timestamp>.log` (console-style step trace) plus a matching `run_<timestamp>.metadata.json` with the arguments, dataset source, and puzzle-level outcomes. You can also invoke this bench via the shared runner: `python ../run_benchmarks.py --benchmark tree_of_thoughts`.
+Each run writes `logs/run_<timestamp>.log` (console-style step trace), `run_<timestamp>.otel.jsonl` (OpenTelemetry spans), plus a matching `run_<timestamp>.metadata.json` with the arguments, dataset source, and puzzle-level outcomes. You can also invoke this bench via the shared runner: `python ../run_benchmarks.py --benchmark tree_of_thoughts`.
 
 ### CLI flags
 
