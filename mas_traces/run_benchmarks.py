@@ -28,6 +28,11 @@ BENCHMARKS: Dict[str, BenchmarkConfig] = {
         "log_dir": ROOT / "faq_redis_semantic_cache_naive" / "logs",
         "command": [PYTHON, "main.py"],
     },
+    "plan_and_execute": {
+        "path": ROOT / "Plan-and-Execute",
+        "log_dir": ROOT / "Plan-and-Execute" / "logs",
+        "command": [PYTHON, "main.py"],
+    },
     "tourist_scheduler": {
         "path": ROOT / "tourist_scheduler_benchmark",
         "log_dir": ROOT / "tourist_scheduler_benchmark" / "logs",

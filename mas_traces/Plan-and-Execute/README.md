@@ -1,0 +1,78 @@
+# Plan-and-Execute Benchmark
+
+This directory turns the original `Plan-and-Execute.ipynb` notebook into a runnable benchmark that mirrors the structure used by other MAS trace examples (e.g., `faq_redis_semantic_cache_naive`). It showcases how to build a LangGraph **plan → execute → re-plan** agent that relies on:
+
+1. `ChatOpenAI` for the planner, executor, and re-planner roles
+2. `TavilySearchResults` as the external search tool surfaced to the agent
+3. The LangGraph compiler to orchestrate planner, executor, and re-planner nodes.
+
+Every CLI run writes node-by-node logs under `logs/` (JSONL) together with a `.metadata.json` sidecar that captures the question, model choices, recursion limit, and success/failure status so benchmark runs can be replayed or diffed later.
+
+```
+┌────────────┐      ┌──────────────┐      ┌──────────────┐
+│   Planner  │ ───▶ │   Executor   │ ───▶ │  Re-planner  │
+└────────────┘      └──────────────┘      └──────────────┘
+     ▲                                            │
+     └────────────────────────────────────────────┘
+```
+
+## 1. Environment setup
+
+```bash
+cd mas_traces/Plan-and-Execute
+python -m venv .venv
+source .venv/bin/activate  # or `.venv\Scripts\activate` on Windows
+pip install -r requirements.txt
+```
+
+> Always keep the dependencies inside this `.venv` so the example stays self-contained.
+
+You must also provide valid API keys inside the same shell session:
+
+```bash
+export OPENAI_API_KEY=sk-...
+export TAVILY_API_KEY=tvly-...
+```
+
+## 2. Run the benchmark
+
+```bash
+python main.py
+```
+
+Useful flags:
+
+| Flag | Description |
+| ---- | ----------- |
+| `--question` | Objective passed to the agent (default: Australian Open hometown example) |
+| `--executor-model` | Model powering the ReAct executor (`gpt-4o-mini` by default) |
+| `--planner-model` / `--replanner-model` | Models that craft/refresh the plan (default: `gpt-4o`) |
+| `--max-search-results` | Controls Tavily's breadth per tool call (default: `3`) |
+| `--recursion-limit` | LangGraph recursion limit to constrain re-planning loops (default: `50`) |
+| `--prompt` | System prompt for the executor |
+| `--quiet` | Skip console summaries—useful when running via `run_benchmarks.py` |
+
+A sample console transcript is available in `sample_output.md`.
+
+## 3. Artifact layout
+
+```
+mas_traces/Plan-and-Execute
+├── logs/                    # JSONL traces + metadata (gitignored via .gitkeep)
+├── main.py                  # CLI wrapper around the LangGraph workflow
+├── plan-and-execute.ipynb   # Original reference notebook
+├── README.md                # You are here
+├── requirements.txt         # Python dependencies
+└── sample_output.md         # Captured run to verify expectations
+```
+
+- `logs/run_YYYYMMDD_HHMMSS.jsonl` – ordered LangGraph node emissions
+- `logs/run_YYYYMMDD_HHMMSS.metadata.json` – CLI arguments, env presence, and success status
+
+## 4. Integrating with other harnesses
+
+- To batch repeated runs, use the shared driver: `python ../run_benchmarks.py --benchmark plan_and_execute --runs 3`
+- Extend the executor prompt or inject additional tools by editing `build_plan_execute_app` in `main.py`
+- Swap to non-OpenAI models by updating the CLI flags (keeping the LangChain-compatible interface)
+
+This structure mirrors the other MAS traces benchmarks so the plan-and-execute agent can now participate in perf suites, regression tests, or MCP demos without firing up Jupyter.
