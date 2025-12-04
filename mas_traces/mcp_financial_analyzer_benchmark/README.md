@@ -54,6 +54,17 @@ bing:
 
 At startup the script reads this file and exports `${PROVIDER}_API_KEY` for each section (`tavily` → `TAVILY_API_KEY`, etc.) unless you already set the variable yourself. These temporary exports are removed when the program exits.
 
+### Using Google LLMs
+
+You can run Gemini through either the public API key or Vertex AI:
+
+| Option | Steps |
+| --- | --- |
+| **API key** (default) | Add `google.api_key: "AIza..."` to `mcp_agent.secrets.yaml`. |
+| **Vertex AI service account** | 1) Place your JSON key anywhere under the repo (e.g., `.google-service-account.json`). 2) Export `GOOGLE_APPLICATION_CREDENTIALS` before running: `export GOOGLE_APPLICATION_CREDENTIALS=\"$PWD/mas_traces/mcp_financial_analyzer_benchmark/.google-service-account.json\"`. 3) Update `mcp_agent.config.yaml` → `google:` block with `vertexai: true`, plus the `project` and `location` that host the Gemini model. |
+
+When `vertexai: true`, the agent constructs the Google client with Vertex AI credentials and ignores `google.api_key`. Make sure the service account has Vertex AI permissions (`roles/aiplatform.user` or finer-grained equivalents).
+
 ### Selecting LLMs and Models
 
 - CLI flag: `python main.py "Apple" --llm-backend openai --llm-model gpt-4o`
@@ -97,6 +108,8 @@ Key environment knobs:
 | `FINANCIAL_ANALYZER_SANITY_MODE` | `1` (default) for the short run, `0` for the full workflow |
 | `BENCHMARK_LLM_REQUESTS_PER_MIN` + `BENCHMARK_LLM_RATE_PERIOD` | Optional rate limits when using Gemini |
 | `FINANCIAL_ANALYZER_SEARCH_PROVIDERS` | Comma-separated priority list for search MCP servers |
+
+If you switch between API-key and Vertex-based Gemini frequently, keep both configurations handy: comment/uncomment the `google.api_key` entry in `mcp_agent.secrets.yaml` and flip `google.vertexai` in `mcp_agent.config.yaml` as needed. The workflow reads those settings on every run, so no code changes are required.
 
 ---
 

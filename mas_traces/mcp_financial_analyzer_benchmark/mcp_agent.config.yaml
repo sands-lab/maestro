@@ -62,3 +62,6 @@ openai:
 
 google:
   default_model: gemini-2.5-flash-lite
+  vertexai: true
+  project: "kaust-pf2023-marco"
+  location: "us-central1"

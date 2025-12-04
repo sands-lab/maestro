@@ -11,6 +11,7 @@ import glob
 import importlib
 import json
 import os
+import signal
 import sys
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -78,6 +79,22 @@ SEARCH_PROVIDER_LABELS = {
     "bing-search": "Bing Web Search",
 }
 
+SEARCH_PROVIDER_TOOL_HINTS = {
+    "g-search": (
+        "Google Search (Playwright): call `search` to run live Google queries; "
+        "provide well-formed prompts and follow up with `fetch` for full pages."
+    ),
+    "tavily-search": (
+        "Tavily: call `tavily_search` (set `topic` to `finance` or `news` and tighten "
+        "`time_range` as needed) for SERPs, then `tavily_extract` for article text "
+        "or `tavily_crawl`/`tavily_map` for site sweeps."
+    ),
+    "bing-search": (
+        "Bing Web Search: call the `search` tool for SERPs and combine with `fetch` "
+        "to pull the referenced articles."
+    ),
+}
+
 METADATA_VERSION = 1
 
 ENVIRONMENT_OVERRIDES = [
@@ -89,6 +106,9 @@ ENVIRONMENT_OVERRIDES = [
     "BENCHMARK_LLM_RATE_PERIOD",
     "GOOGLE_API_KEY",
 ]
+
+INTERRUPTED_BY_USER = False
+_PREVIOUS_SIGINT_HANDLER = None
 
 
 def _parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -175,6 +195,34 @@ def _restore_seeded_env():
             os.environ.pop(env_var, None)
         else:
             os.environ[env_var] = previous
+
+
+def _install_interrupt_tracker():
+    """Track Ctrl+C so metadata can record user-triggered interrupts."""
+    global _PREVIOUS_SIGINT_HANDLER
+    if _PREVIOUS_SIGINT_HANDLER is not None:
+        return
+
+    previous = signal.getsignal(signal.SIGINT)
+
+    def _handler(signum, frame):
+        global INTERRUPTED_BY_USER
+        INTERRUPTED_BY_USER = True
+        if callable(previous):
+            previous(signum, frame)
+        else:
+            raise KeyboardInterrupt()
+
+    _PREVIOUS_SIGINT_HANDLER = previous
+    signal.signal(signal.SIGINT, _handler)
+
+
+def _remove_interrupt_tracker():
+    global _PREVIOUS_SIGINT_HANDLER
+    if _PREVIOUS_SIGINT_HANDLER is None:
+        return
+    signal.signal(signal.SIGINT, _PREVIOUS_SIGINT_HANDLER)
+    _PREVIOUS_SIGINT_HANDLER = None
 
 
 def _print_seeded_env():
@@ -283,6 +331,20 @@ def _describe_search_chain(server_names: list[str]) -> str:
     if len(labels) == 1:
         return labels[0]
     return f"{labels[0]} (fallback: {', '.join(labels[1:])})"
+
+
+def _describe_search_tool_usage(server_names: list[str]) -> str:
+    hints = [
+        SEARCH_PROVIDER_TOOL_HINTS[name]
+        for name in server_names
+        if name in SEARCH_PROVIDER_TOOL_HINTS
+    ]
+    if not hints:
+        return (
+            "- Use the available MCP search tools exactly as exposed in the tool menu "
+            "(call them by their precise function names)."
+        )
+    return "\n".join(f"- {hint}" for hint in hints)
 
 
 def _current_trace_logs() -> set[str]:
@@ -441,6 +503,7 @@ async def main():
         )
 
         search_provider_description = _describe_search_chain(available_search_servers)
+        search_tool_usage = _describe_search_tool_usage(available_search_servers)
         research_server_names = list(available_search_servers)
         if "fetch" not in research_server_names:
             research_server_names.append("fetch")
@@ -507,7 +570,10 @@ async def main():
             instruction=f"""You are a comprehensive financial data collector for {COMPANY_NAME}.
             {scope_note}
 
-            Use {search_provider_description} together with fetch to gather the requested facts in the order listed. Prefer the most recent data and stop once each section has concrete numbers.
+            Use {search_provider_description} together with fetch to gather the requested facts in the order listed. Stick to the available MCP functions exactly as named:
+            {search_tool_usage}
+
+            Prefer the most recent data and stop once each section has concrete numbers.
 
             **REQUIRED DATA TO COLLECT:**
             
@@ -951,6 +1017,12 @@ async def main():
             with open(output_path, "w", encoding="utf-8") as report_file:
                 report_file.write(report_markdown)
 
+            if not report_markdown or not report_markdown.strip():
+                raise ValueError(
+                    "Generated report was empty; treating workflow as a failure."
+                )
+            # TODO: Add semantic validation to ensure the report meets benchmark criteria.
+
             logger.info(f"Report successfully generated: {output_path}")
             run_succeeded = True
 
@@ -972,6 +1044,8 @@ async def main():
                     run_metadata["workflow_error"] = workflow_error
                 else:
                     run_metadata.pop("workflow_error", None)
+                if INTERRUPTED_BY_USER:
+                    run_metadata["interrupted"] = True
                 logger.info(
                     "Workflow finished with status '%s'; writing metadata sidecars.",
                     run_metadata["workflow_status"],
@@ -983,6 +1057,8 @@ async def main():
 
 if __name__ == "__main__":
     try:
+        _install_interrupt_tracker()
         asyncio.run(main())
     finally:
+        _remove_interrupt_tracker()
         _restore_seeded_env()

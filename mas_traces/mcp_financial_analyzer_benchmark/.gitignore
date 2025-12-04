@@ -3,3 +3,4 @@ company_reports/
 logs/
 __pycache__/
 mcp_agent.secrets.yaml
+.google-service-account.json
