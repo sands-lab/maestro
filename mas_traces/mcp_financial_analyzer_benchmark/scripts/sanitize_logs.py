@@ -8,6 +8,7 @@ import json
 import re
 import shutil
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -28,27 +29,31 @@ SECRET_KEY_SUBSTRINGS = ("password",)
 PATTERN_REPLACEMENTS: Iterable[tuple[re.Pattern[str], str]] = (
     (re.compile(r"sk-[A-Za-z0-9_-]{10,}"), "sk-REDACTED"),
     (re.compile(r"AIza[0-9A-Za-z_-]{10,}"), "AIzaREDACTED"),
-    (re.compile(r"Bearer\\s+[A-Za-z0-9._-]+", re.IGNORECASE), "Bearer REDACTED"),
+    (re.compile(r"Bearer\s+[A-Za-z0-9._-]+", re.IGNORECASE), "Bearer REDACTED"),
     (
         re.compile(
-            r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\\s\\S]+?-----END [A-Z ]*PRIVATE KEY-----"
+            r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]+?-----END [A-Z ]*PRIVATE KEY-----"
         ),
         "-----BEGIN PRIVATE KEY-----REDACTED-----END PRIVATE KEY-----",
     ),
 )
 
 
-LOG_TIMESTAMP_PATTERN = re.compile(r"(\\d{8}_\\d{6})")
+LOG_TIMESTAMP_PATTERN = re.compile(r"(\d{8}_\d{6})")
 FILTER_FORMATS = ("%Y%m%d", "%Y%m%d_%H%M%S")
 
 
-def parse_filter_datetime(value: str | None) -> datetime | None:
+def parse_filter_datetime(value: str | None, *, inclusive_end: bool = False) -> datetime | None:
     """Convert CLI date filters into datetime objects."""
     if value is None:
         return None
     for fmt in FILTER_FORMATS:
         try:
-            return datetime.strptime(value, fmt)
+            parsed = datetime.strptime(value, fmt)
+            if fmt == "%Y%m%d" and inclusive_end:
+                # Treat day-only end filters as inclusive through the end of the day.
+                return parsed.replace(hour=23, minute=59, second=59, microsecond=999999)
+            return parsed
         except ValueError:
             continue
     raise argparse.ArgumentTypeError(
@@ -102,7 +107,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--end-date",
-        type=parse_filter_datetime,
+        type=partial(parse_filter_datetime, inclusive_end=True),
         help="Only sanitize files whose timestamp is on/before this date (YYYYMMDD or YYYYMMDD_HHMMSS)",
     )
     return parser.parse_args()
@@ -163,9 +168,7 @@ def sanitize_logs(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
 ) -> None:
-    if dest_dir.exists():
-        shutil.rmtree(dest_dir)
-    dest_dir.mkdir(parents=True)
+    dest_dir.mkdir(parents=True, exist_ok=True)
 
     for path in sorted(source_dir.rglob("*")):
         if path.is_dir():
@@ -174,6 +177,9 @@ def sanitize_logs(
             continue
         relative = path.relative_to(source_dir)
         dest_file = dest_dir / relative
+        if dest_file.exists():
+            # Skip files we've already sanitized to keep destination append-only.
+            continue
         dest_file.parent.mkdir(parents=True, exist_ok=True)
 
         if path.suffix == ".jsonl":

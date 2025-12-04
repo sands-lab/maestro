@@ -1,0 +1,38 @@
+{
+  "app_name": "enhanced_stock_analyzer",
+  "cli_argv": [
+    "Starbucks Corporation",
+    "--llm-backend",
+    "google",
+    "--search-providers",
+    "tavily"
+  ],
+  "company": "Starbucks Corporation",
+  "env_overrides": {
+    "FINANCIAL_ANALYZER_SANITY_MODE": "0"
+  },
+  "generated_at": "2025-12-02T10:34:10.382995+00:00",
+  "llm_backend": "google",
+  "llm_canonical_backend": "google",
+  "llm_model": "gemini-2.5-flash-lite",
+  "metadata_version": 1,
+  "news_items_required": 5,
+  "orchestrator_max_iterations": 8,
+  "python_version": "3.10.12 (main, Nov  4 2025, 08:48:33) [GCC 11.4.0]",
+  "report_path": "company_reports/starbucks_corporation_report_20251202_103407.md",
+  "research_max_refinements": 3,
+  "research_min_rating": "GOOD",
+  "run_id": "20251202_103407",
+  "sanity_mode": false,
+  "search_provider_description": "Tavily",
+  "search_providers_active": [
+    "tavily-search"
+  ],
+  "search_providers_requested": [
+    "tavily"
+  ],
+  "trace_log": "logs/financial_analyzer_traces-20251202_103407.jsonl",
+  "trace_log_basename": "financial_analyzer_traces-20251202_103407.jsonl",
+  "workflow_completed": true,
+  "workflow_status": "ok"
+}
