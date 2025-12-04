@@ -33,6 +33,11 @@ BENCHMARKS: Dict[str, BenchmarkConfig] = {
         "log_dir": ROOT / "tree-of-thoughts" / "logs",
         "command": [PYTHON, "main.py"],
     },
+    "language_agent_tree_search": {
+        "path": ROOT / "language-agent-tree-search",
+        "log_dir": ROOT / "language-agent-tree-search" / "logs",
+        "command": [PYTHON, "main.py"],
+    },
     "plan_and_execute": {
         "path": ROOT / "Plan-and-Execute",
         "log_dir": ROOT / "Plan-and-Execute" / "logs",

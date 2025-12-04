@@ -1,0 +1,67 @@
+# Language Agent Tree Search Benchmark
+
+This directory converts the LangChain `lats.ipynb` tutorial into a repeatable CLI benchmark that mirrors the structure used by the other MAS traces (for example `faq_redis_semantic_cache_naive`). Instead of stepping through the notebook manually, you can now replay the Language Agent Tree Search (LATS) workflow—initial candidate generation, Monte-Carlo style expansion, Tavily tool calls, self-reflection, and loop termination—against a list of questions while capturing reproducible logs and metadata.
+
+```
+┌─────────────┐   ┌──────────────────┐   ┌───────────┐   ┌───────────────┐
+│ Question(s) │ → │ LATS LangGraph   │ → │ Tavily    │ → │ Reflections & │
+└─────────────┘   │ (start/expand)   │   │ tool node │   │ scoring       │
+                  └──────────────────┘   └───────────┘   └───────────────┘
+                                                         │
+                                                         ▼
+                                    logs/run_<ts>.log + run_<ts>.metadata.json
+```
+
+## 1. Environment setup
+
+```bash
+cd mas_traces/language-agent-tree-search
+python -m venv .venv && source .venv/bin/activate  # or use uv
+pip install -r requirements.txt
+```
+
+Credentials expected by the benchmark:
+
+- `OPENAI_API_KEY` – used by `langchain-openai` for the LATS planner/reflection LLM.
+- `TAVILY_API_KEY` – required because the notebook relies on Tavily search results as the only tool.
+- (Optional) `LANGSMITH_API_KEY` + `LANGSMITH_PROJECT` if you want tracing in LangSmith while running benchmarks.
+
+## 2. Run the benchmark
+
+```bash
+python main.py \
+  --model gpt-4o-mini \
+  --temperature 0.3 \
+  --max-depth 5 \
+  --branching-factor 5 \
+  --questions-file data/questions.csv
+```
+
+Each run writes `logs/run_<timestamp>.log` (human-readable stream of graph events) and a matching JSON metadata file with the CLI arguments, dataset source, runtime, whether the question was solved, and the best trajectory response. You can also invoke this benchmark via the shared runner: `python ../run_benchmarks.py --benchmark language_agent_tree_search`.
+
+### CLI flags
+
+| Flag | Description |
+| --- | --- |
+| `--model` | Chat Completions model passed to `ChatOpenAI` (default `gpt-4o-mini`). |
+| `--temperature` | Forwarded to both the initial candidate and expansion chains. |
+| `--max-depth` | Maximum tree height before the search stops (default `5`). |
+| `--branching-factor` | Number of candidate continuations sampled per expansion round (default `5`). |
+| `--questions-file` | CSV with a `question` column. Defaults to `data/questions.csv`. |
+| `--start-index` | 0-based index in the dataset to start from (default `0`). |
+| `--num-questions` | Number of questions to run sequentially (default `1`). |
+| `--tavily-max-results` | Cap the Tavily search tool output (default `5`). |
+
+## 3. Project layout
+
+```
+mas_traces/language-agent-tree-search
+├── data/questions.csv          # Simple default dataset extracted from the notebook
+├── logs/                       # Run logs + metadata (gitignored, .gitkeep placeholder)
+├── main.py                     # CLI benchmark implementation
+├── README.md                   # This guide
+├── requirements.txt            # Python dependencies
+└── lats.ipynb                  # Original notebook for reference
+```
+
+The benchmark stays close to the notebook logic so you can tweak prompts, branching factors, or reward shaping while still producing reproducible artifacts for downstream automation and regression testing.
