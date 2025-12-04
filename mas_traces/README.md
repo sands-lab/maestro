@@ -20,4 +20,5 @@ Below is the progress status for each benchmark example. This list will expand a
 
 - [x] **financial_analyzer**: Runs successfully with OpenAI LLM and Tavily search MCP.
 - [ ] **faq_redis_semantic_cache_naive**: Not yet tested (single-agent/FAQ Redis cache baseline).
+- [ ] **tree_of_thoughts**: Not yet tested (Game of 24 Tree-of-Thoughts search).
 - [ ] **tourist_scheduler**: Not yet tested.

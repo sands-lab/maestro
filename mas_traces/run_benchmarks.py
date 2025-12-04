@@ -28,6 +28,11 @@ BENCHMARKS: Dict[str, BenchmarkConfig] = {
         "log_dir": ROOT / "faq_redis_semantic_cache_naive" / "logs",
         "command": [PYTHON, "main.py"],
     },
+    "tree_of_thoughts": {
+        "path": ROOT / "tree-of-thoughts",
+        "log_dir": ROOT / "tree-of-thoughts" / "logs",
+        "command": [PYTHON, "main.py"],
+    },
     "plan_and_execute": {
         "path": ROOT / "Plan-and-Execute",
         "log_dir": ROOT / "Plan-and-Execute" / "logs",
