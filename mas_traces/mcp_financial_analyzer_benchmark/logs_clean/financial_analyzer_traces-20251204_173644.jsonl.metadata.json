@@ -1,0 +1,40 @@
+{
+  "app_name": "enhanced_stock_analyzer",
+  "cli_argv": [
+    "DoorDash",
+    "--llm-backend",
+    "google",
+    "--search-providers",
+    "tavily",
+    "--llm-model",
+    "gemini-2.0-flash-lite"
+  ],
+  "company": "DoorDash",
+  "env_overrides": {
+    "FINANCIAL_ANALYZER_SANITY_MODE": "0"
+  },
+  "generated_at": "2025-12-04T17:36:48.509399+00:00",
+  "llm_backend": "google",
+  "llm_canonical_backend": "google",
+  "llm_model": "gemini-2.0-flash-lite",
+  "metadata_version": 1,
+  "news_items_required": 5,
+  "orchestrator_max_iterations": 8,
+  "python_version": "3.10.12 (main, Nov  4 2025, 08:48:33) [GCC 11.4.0]",
+  "report_path": "company_reports/doordash_report_20251204_173644.md",
+  "research_max_refinements": 3,
+  "research_min_rating": "GOOD",
+  "run_id": "20251204_173644",
+  "sanity_mode": false,
+  "search_provider_description": "Tavily",
+  "search_providers_active": [
+    "tavily-search"
+  ],
+  "search_providers_requested": [
+    "tavily"
+  ],
+  "trace_log": "logs/financial_analyzer_traces-20251204_173644.jsonl",
+  "trace_log_basename": "financial_analyzer_traces-20251204_173644.jsonl",
+  "workflow_completed": true,
+  "workflow_status": "ok"
+}
