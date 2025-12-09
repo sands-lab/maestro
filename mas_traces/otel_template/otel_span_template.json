@@ -41,11 +41,7 @@
       "agent.log": "<optional-log-line>",
       "communication.input_message_size_bytes": 0,
       "communication.output_message_size_bytes": 0,
-      "communication.total_message_size_bytes": 0,
-      "system.cpu.percent": 0.0,
-      "process.cpu.percent": 0.0,
-      "system.memory.usage_bytes": 0,
-      "process.memory.rss_bytes": 0
+      "communication.total_message_size_bytes": 0
     },
     "communication": {
       "is_in_process_call": false,
