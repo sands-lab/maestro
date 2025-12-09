@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Dict, List, Literal, NamedTuple, Optional, Sequence, Union
 
 import requests
+from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import InMemorySaver
@@ -61,17 +62,28 @@ class FileSpanExporter(SpanExporter):
     def export(self, spans) -> SpanExportResult:
         lines: List[str] = []
         for span in spans:
-            data = {
+            context = span.context
+            parent_context = span.parent
+            parent_id: str | None = None
+            if parent_context and getattr(parent_context, "span_id", 0):
+                parent_id = format(parent_context.span_id, "016x")
+            data: Dict[str, object] = {
                 "name": span.name,
                 "context": {
-                    "trace_id": format(span.context.trace_id, "032x"),
-                    "span_id": format(span.context.span_id, "016x"),
+                    "trace_id": format(context.trace_id, "032x"),
+                    "span_id": format(context.span_id, "016x"),
                 },
+                "kind": span.kind.name,
                 "start_time": span.start_time,
                 "end_time": span.end_time,
                 "status": span.status.status_code.name,
                 "attributes": dict(span.attributes),
             }
+            if parent_id:
+                data["parent_span_id"] = parent_id
+            description = span.status.description
+            if description:
+                data["status_description"] = description
             lines.append(json.dumps(data))
         with self.file_path.open("a", encoding="utf-8") as handle:
             handle.write("\n".join(lines) + "\n")
@@ -156,6 +168,35 @@ class ScoredCandidate(Candidate):
     candidate: Equation
     score: float
     feedback: str
+
+
+class LLMTokenUsageCallback(BaseCallbackHandler):
+    """Capture token statistics for a single LangChain LLM call."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.token_usage: Dict[str, int] | None = None
+
+    def on_llm_end(self, response, **kwargs):  # type: ignore[override]
+        usage = None
+        llm_output = getattr(response, "llm_output", None)
+        if isinstance(llm_output, dict):
+            usage = llm_output.get("token_usage") or llm_output.get("usage")
+        if isinstance(usage, dict):
+            self.token_usage = {
+                key: int(value)
+                for key, value in usage.items()
+                if isinstance(value, (int, float))
+            }
+
+
+def _preview_candidates(
+    items: Sequence[Candidate | ScoredCandidate], limit: int = 3
+) -> List[str]:
+    preview = [str(item) for item in items[:limit]]
+    if len(items) > limit:
+        preview.append("...")
+    return preview
 
 
 def update_candidates(
@@ -293,40 +334,105 @@ def build_solver(model: str, temperature: float, max_tokens: Optional[int]) -> o
     return prompt | llm.with_structured_output(GuessEquations)
 
 
-def build_graph(solver: object) -> StateGraph:
+def _thread_id_from_runtime(runtime: Runtime[Context]) -> str | None:
+    config = getattr(runtime, "config", None)
+    if isinstance(config, dict):
+        configurable = config.get("configurable")
+        if isinstance(configurable, dict):
+            thread_id = configurable.get("thread_id")
+            if thread_id is not None:
+                return str(thread_id)
+    return None
+
+
+def build_graph(solver: object, tracer: trace.Tracer | None = None) -> StateGraph:
+    node_tracer = tracer or trace.get_tracer("tree-of-thoughts")
+
+    def _span(name: str, attributes: Dict[str, object]):
+        return node_tracer.start_as_current_span(name, attributes=attributes)
     def expand(
         state: ExpansionState, *, runtime: Runtime[Context]
     ) -> Dict[str, List[Candidate]]:
         ctx = _ensure_context(runtime.context)
         seed = state.get("seed")
         candidate_str = "" if not seed else f"\n\n{seed}"
-        try:
-            equation_submission = solver.invoke(
-                {"problem": state["problem"], "candidate": candidate_str, "k": ctx["k"]}
-            )
-        except Exception as exc:
-            logger.warning("LLM expansion failed: %s", exc)
-            return {"candidates": []}
-        new_candidates = [
-            Candidate(candidate=equation) for equation in equation_submission.equations
-        ]
-        return {"candidates": new_candidates}
+        attributes: Dict[str, object] = {
+            "tot.node": "expand",
+            "tot.seed_present": bool(seed),
+            "tot.branching_factor": ctx["k"],
+            "tot.depth": int(state.get("depth") or 0),
+        }
+        thread_id = _thread_id_from_runtime(runtime)
+        if thread_id:
+            attributes["tot.thread_id"] = thread_id
+        if "problem" in state:
+            attributes["tot.problem"] = state["problem"]
+        with _span("tot.expand", attributes) as span:
+            try:
+                token_tracker = LLMTokenUsageCallback()
+                equation_submission = solver.invoke(
+                    {"problem": state["problem"], "candidate": candidate_str, "k": ctx["k"]},
+                    config={"callbacks": [token_tracker]},
+                )
+            except Exception as exc:
+                logger.warning("LLM expansion failed: %s", exc)
+                span.record_exception(exc)
+                span.set_status(Status(StatusCode.ERROR, str(exc)))
+                return {"candidates": []}
+            new_candidates = [
+                Candidate(candidate=equation) for equation in equation_submission.equations
+            ]
+            span.set_attribute("tot.generated_candidates", len(new_candidates))
+            span.set_attribute("tot.candidate_preview", _preview_candidates(new_candidates))
+            if token_tracker.token_usage:
+                usage = token_tracker.token_usage
+                span.set_attribute("tot.prompt_tokens", usage.get("prompt_tokens", 0))
+                span.set_attribute("tot.completion_tokens", usage.get("completion_tokens", 0))
+                span.set_attribute("tot.total_tokens", usage.get("total_tokens", 0))
+            return {"candidates": new_candidates}
 
     def score(state: ToTState) -> Dict[str, object]:
         candidates = state.get("candidates") or []
-        scored = [compute_score(state["problem"], candidate) for candidate in candidates]
-        return {"scored_candidates": scored, "candidates": "clear"}
+        attributes: Dict[str, object] = {
+            "tot.node": "score",
+            "tot.candidate_count": len(candidates),
+        }
+        if "problem" in state:
+            attributes["tot.problem"] = state["problem"]
+        with _span("tot.score", attributes) as span:
+            scored = [compute_score(state["problem"], candidate) for candidate in candidates]
+            best = max((candidate.score or 0.0 for candidate in scored), default=0.0)
+            span.set_attribute("tot.best_candidate_score", best)
+            if scored:
+                span.set_attribute("tot.scored_preview", _preview_candidates(scored))
+            span.set_status(Status(StatusCode.OK))
+            return {"scored_candidates": scored, "candidates": "clear"}
 
     def prune(state: ToTState, *, runtime: Runtime[Context]) -> Dict[str, object]:
         scored_candidates = state.get("scored_candidates") or []
         beam_size = _ensure_context(runtime.context)["beam_size"]
         organized = sorted(scored_candidates, key=lambda candidate: candidate.score, reverse=True)
         pruned = organized[:beam_size]
-        return {
-            "candidates": pruned,
-            "scored_candidates": "clear",
-            "depth": 1,
+        depth = int(state.get("depth") or 0)
+        attributes: Dict[str, object] = {
+            "tot.node": "prune",
+            "tot.scored_count": len(scored_candidates),
+            "tot.pruned_count": len(pruned),
+            "tot.beam_size": beam_size,
+            "tot.depth": depth,
         }
+        thread_id = _thread_id_from_runtime(runtime)
+        if thread_id:
+            attributes["tot.thread_id"] = thread_id
+        with _span("tot.prune", attributes) as span:
+            if pruned:
+                span.set_attribute("tot.candidate_preview", _preview_candidates(pruned))
+            span.set_status(Status(StatusCode.OK))
+            return {
+                "candidates": pruned,
+                "scored_candidates": "clear",
+                "depth": depth + 1,
+            }
 
     def should_terminate(
         state: ToTState, runtime: Runtime[Context]
@@ -471,6 +577,7 @@ def run_problem(
                 summary = _summarize_event(event)
                 events.append(summary)
                 print(f"  {summary}", flush=True)
+                span.add_event("tot.graph_event", {"tot.summary": summary})
         except Exception as exc:
             duration = time.perf_counter() - start
             logger.error("Graph execution failed for puzzle %s: %s", index, exc)
@@ -525,6 +632,8 @@ def run_problem(
         span.set_attribute("tot.depth", depth)
         span.set_attribute("tot.solved", solved)
         span.set_attribute("tot.duration_seconds", duration)
+        if solved:
+            span.set_status(Status(StatusCode.OK))
         return RunResult(
             index=index,
             puzzle=puzzle,
@@ -674,7 +783,7 @@ def main() -> None:
 
     tracer, trace_log_path, provider, run_id = setup_tracer()
     solver = build_solver(args.model, args.temperature, args.max_tokens)
-    graph = build_graph(solver)
+    graph = build_graph(solver, tracer=tracer)
     search_ctx: EnsuredContext = {
         "max_depth": args.max_depth,
         "threshold": args.score_threshold,
@@ -722,7 +831,9 @@ def main() -> None:
             run_span.set_attribute(
                 "tot.solved_runs", sum(1 for result in results if result.solved)
             )
-            if run_status != "ok":
+            if run_status == "ok":
+                run_span.set_status(Status(StatusCode.OK))
+            elif run_status == "error":
                 run_span.set_status(Status(StatusCode.ERROR, run_status))
     finally:
         provider.shutdown()

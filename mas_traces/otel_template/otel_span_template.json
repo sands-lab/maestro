@@ -1,0 +1,51 @@
+{
+  "trace_id": "00000000000000000000000000000000",
+  "resource": {
+    "attributes": {
+      "service.name": "<service-name>",
+      "service.version": "<semver>",
+      "deployment.environment": "<dev|staging|prod>",
+      "telemetry.sdk.name": "opentelemetry",
+      "telemetry.sdk.language": "python",
+      "telemetry.sdk.version": "1.37.0"
+    }
+  },
+  "spans": [
+    {
+      "trace_id": "00000000000000000000000000000000",
+      "span_id": "0000000000000000",
+      "parent_span_id": null,
+      "name": "<operation-name>",
+      "kind": "INTERNAL",
+      "start_time": 0,
+      "end_time": 0,
+      "status": {
+        "status_code": "UNSET",
+        "description": null
+      },
+      "attributes": {
+        "agent.name": "<agent-id>",
+        "tot.thread_id": "<thread>",
+        "gen_ai.request.model": "<model>",
+        "gen_ai.usage.input_tokens": 0,
+        "gen_ai.usage.output_tokens": 0,
+        "gen_ai.usage.total_tokens": 0,
+        "gen_ai.llm.call.count": 0,
+        "gen_ai.mcp.call.count": 0,
+        "gen_ai.response.finish_reasons": [],
+        "gen_ai.operation.name": "<call_llm|execute_tool|invoke_agent>",
+        "mcp.server": "<server-name>",
+        "mcp.tool": "<tool-name>"
+      },
+      "events": [
+        {
+          "name": "<event-name>",
+          "timestamp": 0,
+          "attributes": {
+            "tot.summary": "<human-readable step summary>"
+          }
+        }
+      ]
+    }
+  ]
+}

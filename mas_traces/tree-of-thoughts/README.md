@@ -55,11 +55,25 @@ Each run writes `logs/run_<timestamp>.log` (console-style step trace), `run_<tim
 | `--dataset-url` | Remote CSV URL fallback if no local dataset is provided. |
 | `--max-tokens` | Upper bound on tokens returned by the LLM per expansion (default `1024`). |
 
+## Dataset options
+
+Three ready-to-use sources cover most testing needs:
+
+1. `data/game_of_24_sample.csv` – the tiny 11-row file checked into the repo so smoke tests can run offline.
+2. `data/game_of_24_google_full.csv` – the “real” Game of 24 dataset distributed alongside the Tree-of-Thoughts tutorial (`https://storage.googleapis.com/benchmarks-artifacts/game-of-24/24.csv`). We mirrored it locally so you can run the canonical benchmark without depending on the network. Reference: *Yao et al., Tree of Thoughts: Deliberate Problem Solving with Large Language Models (2023).*
+3. `data/game_of_24_benchmark.csv` – a 50-puzzle suite generated from every solvable combination of card values (`1-13`). The script enforces balanced coverage across structural categories (all-equal, triples, two pairs, tight pairs, wide-range uniques, etc.) and attaches descriptive tags (`has_ace`, `face_card`, `prime_heavy`, ...). Run the benchmark with `--dataset-file data/game_of_24_benchmark.csv` to exercise that suite end-to-end.
+
+If you prefer streaming directly, `--dataset-url https://storage.googleapis.com/benchmarks-artifacts/game-of-24/24.csv` still works—the flag points to the same Google artifact.
+
+All CSVs just need a column named `puzzle` (extra metadata columns are ignored), so you can mix and match files or build your own.
+
 ## 3. Project layout
 
 ```
 mas_traces/tree-of-thoughts
-├── data/game_of_24_sample.csv   # Tiny offline dataset used by default
+├── data/game_of_24_sample.csv      # Tiny offline dataset used by default
+├── data/game_of_24_google_full.csv # Full ToT dataset mirrored from Google
+├── data/game_of_24_benchmark.csv  # Curated 50-case suite with category/tags
 ├── logs/                        # Writable directory for run logs (gitignored)
 ├── main.py                      # ToT CLI benchmark
 ├── README.md                    # This guide
