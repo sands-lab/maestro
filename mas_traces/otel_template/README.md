@@ -56,8 +56,56 @@ Spans can attach `events` with `timestamp` + `attributes`. Use them for step-by-
 2. Span payloads always contain the common metrics + CPU/memory fields.
 3. Optional blocks (`communication`, `events`) follow a consistent shape even when empty.
 
-If a field truly doesn’t apply, omit it rather than renaming—scripts already treat missing keys as “not recorded”.
+If a field truly doesn't apply, omit it rather than renaming—scripts already treat missing keys as "not recorded".
 
-## Metrics
+**Note**: The `.json` template file is provided in a human-readable format for documentation purposes. **Actual exports should use JSONL format** (one JSON object per line) for efficient streaming and processing. See `otel_span_template.json` for the structure reference, but export as `.jsonl` in your implementation.
 
-CPU/memory sampling now happens inline with each span, so the JSON template no longer carries a separate metrics block. If your instrumented app exports additional OTEL metrics streams, keep those in their own files/streams—the span template only defines the per-event payload structure.
+## CPU/Memory Metrics
+
+### CPU/Memory Metrics Collection
+
+CPU and memory metrics are collected separately from spans using OpenTelemetry Metrics API with periodic sampling:
+
+- **Collection Mechanism**: Uses `PeriodicExportingMetricReader` with `observable_gauge` metrics
+- **Sampling Frequency**: Every 1 second (configurable via `export_interval_millis`)
+- **Collection Method**: 
+  - CPU: `psutil.Process().cpu_percent(interval=0.1)` - Process CPU usage percentage
+  - Memory: `psutil.Process().memory_info().rss` - Process memory RSS in bytes
+- **Export Format**: JSONL file (one metric record per line)
+- **File Location**: `metrics/{service_name}_{timestamp}.jsonl`
+
+The metrics are collected via callback functions (`_get_process_cpu_usage`, `_get_process_memory_usage`) that are automatically invoked by the OpenTelemetry SDK's background thread every second. This provides uniform time-series data for resource usage visualization.
+
+### Metrics File Structure
+
+Each line in the metrics JSONL file is a metric record with the following structure:
+
+| Field | Description |
+| --- | --- |
+| `timestamp` | ISO 8601 timestamp when the metric was exported |
+| `metric_name` | Metric identifier (`process.cpu.usage`, `process.memory.usage_bytes`, etc.) |
+| `description` | Human-readable description |
+| `unit` | Unit of measurement (`%`, `bytes`, etc.) |
+| `data_points` | Array of data points, each containing `value`, `timestamp` (Unix nanoseconds), and `attributes` |
+| `resource.attributes` | Resource attributes (service.name, service.version, deployment.environment, telemetry.*) |
+| `scope` | Instrumentation scope name |
+
+### Required Metrics
+
+| Metric Name | Unit | Description |
+| --- | --- | --- |
+| `process.cpu.usage` | `%` | Process CPU usage percentage (0-100) |
+| `process.memory.usage_bytes` | `bytes` | Process memory usage (RSS - Resident Set Size) |
+
+### Span Attributes vs Metrics
+
+- **Span Attributes**: CPU/memory values are recorded inline with each span (event-driven, non-uniform sampling)
+- **Metrics File**: CPU/memory values are collected periodically (uniform time-series, 1 second intervals)
+
+For visualization and analysis, use the metrics file for accurate time-series data. Span attributes provide instantaneous values for standard compliance but are not suitable for time-series analysis.
+
+### Metrics Template Files
+
+- **`otel_metrics_template.json`**: Human-readable JSON format for documentation and reference
+
+**Important**: The `.json` file is provided only for human readability. **Actual metrics exports must use JSONL format** (`.jsonl`) for efficient streaming, incremental writes, and compatibility with analysis tools. Each line in the JSONL file should be a complete, valid JSON object representing one metric record.
