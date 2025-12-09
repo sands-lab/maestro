@@ -6,3 +6,4 @@ requests>=2.31
 typing_extensions>=4.12
 opentelemetry-api>=1.27
 opentelemetry-sdk>=1.27
+psutil>=5.9

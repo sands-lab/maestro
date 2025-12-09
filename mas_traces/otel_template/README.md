@@ -1,6 +1,6 @@
 # OTEL Trace Template
 
-This folder holds the union/“superset” OpenTelemetry schema observed across every benchmark trace we’ve collected so far (image scoring, financial analyzer, Tree-of-Thoughts, etc.). Future exporters should reuse these field names verbatim whenever possible so the shared parsing/analysis tooling can ingest traces without custom adapters. If a field doesn’t apply, omit it or set it to `0` per the guidelines below.
+This folder holds the union/“superset” OpenTelemetry schema observed across every benchmark trace we’ve collected so far (image scoring, financial analyzer, Tree-of-Thoughts, etc.). Future exporters should reuse these field names verbatim whenever possible **and preserve the ordering/layering shown in the template** so the shared parsing/analysis tooling can ingest traces without custom adapters. If a field doesn’t apply, omit it or set it to `0` per the guidelines below.
 
 ## Required Span Fields
 
