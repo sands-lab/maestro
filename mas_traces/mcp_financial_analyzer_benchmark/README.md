@@ -141,6 +141,57 @@ If you switch between API-key and Vertex-based Gemini frequently, keep both conf
 
 ---
 
+## Running a Local OTLP Collector
+
+The repo ships a tiny OpenTelemetry Collector config (`otel-collector.local.yaml`) plus a helper launcher (`scripts/run_local_otel_collector.sh`). They expose the standard OTLP gRPC (`:4317`) and HTTP (`:4318`) ports, batch incoming spans, and dump everything to `collector_logs/financial_analyzer_spans.jsonl` while also echoing spans to stdout.
+
+```bash
+cd mas_traces/mcp_financial_analyzer_benchmark
+# Requires Docker; override OTEL_COLLECTOR_IMAGE if you host your own build
+./scripts/run_local_otel_collector.sh
+```
+
+If you already installed `otelcol-contrib`, run it directly instead:
+
+```bash
+otelcol-contrib --config=otel-collector.local.yaml
+```
+
+Once you see `Everything is ready. Begin running and processing data.`, point the benchmark at the collector (the example below pins the Google/Gemini backend and Tavily search so it runs out-of-the-box without Bing credentials):
+
+```bash
+python main.py "Parker-Hannifin Corporation" \
+  --llm-backend google \
+  --llm-model gemini-2.0-flash-lite \
+  --search-providers tavily \
+  --otel-remote-endpoint "http://localhost:4318/v1/traces"
+```
+
+Any other OTLP-compatible producer (the sample MCP server under `mcp_agent` included) can send traces to the very same collector. For remote deployments, copy `otel-collector.local.yaml` to the target host, tweak `collector_logs` to a writable directory, and run `otelcol[-contrib] --config /path/to/config`. Then launch the benchmark with `--otel-remote-endpoint http://<host>:4318/v1/traces` (or the gRPC variant `grpc://<host>:4317`).
+
+---
+
+## Shipping OpenTelemetry Traces Remotely
+
+The benchmark writes OpenTelemetry spans to `logs/financial_analyzer_traces-*.jsonl` by default (see `otel.exporters` in `mcp_agent.config.yaml`). If you want to stream those spans to a remote collector instead, supply an OTLP/HTTP endpoint at runtime:
+
+```bash
+python main.py "Parker-Hannifin Corporation" \
+  --llm-backend google \
+  --llm-model gemini-2.0-flash-lite \
+  --search-providers tavily \
+  --otel-remote-endpoint "http://localhost:4318/v1/traces" \
+  --otel-remote-header "Authorization=Basic abc123"
+```
+
+- `--otel-remote-endpoint` (or `FINANCIAL_ANALYZER_OTEL_REMOTE_ENDPOINT`) switches the exporter to OTLP/HTTP for the current run.
+- Repeat `--otel-remote-header KEY=VALUE` to add OTLP headers. You can also set `FINANCIAL_ANALYZER_OTEL_REMOTE_HEADERS="Authorization=Basic abc123,X-Project=mas-traces"` (comma or semicolon delimited) to seed headers from the environment.
+- Leave the flag unset to continue writing JSONL traces locally.
+
+This mirrors the [mcp-agent tracing example](https://github.com/lastmile-ai/mcp-agent/blob/4af1e558e47825da1dfa4aeb42cbd411e571926a/examples/tracing/mcp/README.md): the configuration stays local-first, but you can override it on demand without editing `mcp_agent.config.yaml`.
+
+---
+
 ## Batch Runs
 
 Use the shared harness to execute multiple iterations with timeouts:

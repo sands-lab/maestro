@@ -25,6 +25,7 @@ from mcp_agent.config import (
     LoggerSettings,
     MCPSettings,
     MCPServerSettings,
+    get_settings,
 )
 from mcp_agent.agents.agent import Agent
 from mcp_agent.workflows.orchestrator.orchestrator import Orchestrator
@@ -105,6 +106,8 @@ ENVIRONMENT_OVERRIDES = [
     "BENCHMARK_LLM_REQUESTS_PER_MIN",
     "BENCHMARK_LLM_RATE_PERIOD",
     "GOOGLE_API_KEY",
+    "FINANCIAL_ANALYZER_OTEL_REMOTE_ENDPOINT",
+    "FINANCIAL_ANALYZER_OTEL_REMOTE_HEADERS",
 ]
 
 INTERRUPTED_BY_USER = False
@@ -146,6 +149,24 @@ def _parse_cli_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--print-env-only",
         action="store_true",
         help="Print the seeded API key environment variables and exit.",
+    )
+    parser.add_argument(
+        "--otel-remote-endpoint",
+        default=os.getenv("FINANCIAL_ANALYZER_OTEL_REMOTE_ENDPOINT"),
+        help=(
+            "Optional OTLP/HTTP endpoint for OpenTelemetry spans. When provided, "
+            "local file exporters are replaced with a remote OTLP exporter."
+        ),
+    )
+    parser.add_argument(
+        "--otel-remote-header",
+        dest="otel_remote_headers",
+        action="append",
+        default=None,
+        metavar="KEY=VALUE",
+        help=(
+            "Extra header to attach when sending OTLP traces. Repeat for multiple headers."
+        ),
     )
     return parser.parse_args(argv)
 
@@ -240,6 +261,80 @@ LLM_BACKEND = CLI_ARGS.llm_backend
 LLM_MODEL_OVERRIDE = CLI_ARGS.llm_model
 REQUESTED_SEARCH_PROVIDERS = CLI_ARGS.search_providers
 PRINT_ENV_ONLY = CLI_ARGS.print_env_only
+OTEL_REMOTE_ENDPOINT = (CLI_ARGS.otel_remote_endpoint or "").strip() or None
+OTEL_REMOTE_HEADERS_RAW = CLI_ARGS.otel_remote_headers or []
+
+env_remote_headers = os.getenv("FINANCIAL_ANALYZER_OTEL_REMOTE_HEADERS")
+if env_remote_headers:
+    separator_normalized = env_remote_headers.replace(";", ",")
+    extra_tokens = [
+        token.strip()
+        for token in separator_normalized.split(",")
+        if token and token.strip()
+    ]
+    OTEL_REMOTE_HEADERS_RAW.extend(extra_tokens)
+
+
+def _log_message(logger, level: str, message: str, *args):
+    formatted = message % args if args else message
+    if logger is None:
+        print(f"[otel:{level}] {formatted}")
+    else:
+        log_fn = getattr(logger, level, None)
+        if callable(log_fn):
+            log_fn(formatted)
+        else:
+            logger.info(formatted)
+
+
+def _parse_remote_header_pairs(raw_pairs: list[str], logger) -> dict[str, str]:
+    headers: dict[str, str] = {}
+    for pair in raw_pairs:
+        if "=" not in pair:
+            _log_message(
+                logger,
+                "warning",
+                "Ignoring malformed OTLP header '%s'; expected KEY=VALUE format.",
+                pair,
+            )
+            continue
+        key, value = pair.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            _log_message(
+                logger,
+                "warning",
+                "Ignoring OTLP header with empty key from token '%s'.",
+                pair,
+            )
+            continue
+        headers[key] = value
+    return headers
+
+
+def _configure_otel_exporters(config, logger=None) -> bool:
+    otel_config = getattr(config, "otel", None)
+    if not otel_config or not getattr(otel_config, "enabled", False):
+        return True
+
+    if not OTEL_REMOTE_ENDPOINT:
+        return True
+
+    headers = _parse_remote_header_pairs(OTEL_REMOTE_HEADERS_RAW, logger)
+    sanitized_endpoint = OTEL_REMOTE_ENDPOINT
+    otlp_settings = {"endpoint": sanitized_endpoint}
+    if headers:
+        otlp_settings["headers"] = headers
+
+    otel_config.exporters = [{"otlp": otlp_settings}]
+    _log_message(
+        logger,
+        "info",
+        "OpenTelemetry exporters configured for remote OTLP endpoint: %s",
+        sanitized_endpoint,
+    )
+    return True
 
 
 def _canonical_backend_name(backend: str | None) -> str | None:
@@ -446,8 +541,10 @@ RESEARCH_MAX_REFINEMENTS = 1 if SANITY_MODE else 3
 RESEARCH_MIN_RATING = QualityRating.FAIR if SANITY_MODE else QualityRating.GOOD
 ORCHESTRATOR_MAX_ITERATIONS = 3 if SANITY_MODE else 8
 
-# Initialize app
-app = MCPApp(name="enhanced_stock_analyzer", human_input_callback=None)
+# Initialize app with tracing overrides applied before startup
+APP_SETTINGS = get_settings()
+_configure_otel_exporters(APP_SETTINGS, logger=None)
+app = MCPApp(name="enhanced_stock_analyzer", human_input_callback=None, settings=APP_SETTINGS)
 
 
 async def main():
@@ -467,6 +564,8 @@ async def main():
         context = analyzer_app.context
         logger = analyzer_app.logger
         _configure_google_rate_limit(context.config, logger)
+        if not _configure_otel_exporters(context.config, logger):
+            return False
 
         for server in context.config.mcp.servers.values():
             if server.args:
@@ -541,6 +640,9 @@ async def main():
             search_active=available_search_servers,
             search_description=search_provider_description,
             report_path=output_path,
+        )
+        run_metadata["otel_exporter"] = (
+            f"remote_otlp:{OTEL_REMOTE_ENDPOINT}" if OTEL_REMOTE_ENDPOINT else "local_file"
         )
 
         # Configure filesystem server to use current directory
