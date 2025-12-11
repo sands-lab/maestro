@@ -48,12 +48,12 @@ At startup the script reads this file and exports `${PROVIDER}_API_KEY` for each
 
 ## Running a Local OTLP Collector
 
-The repo ships a tiny OpenTelemetry Collector config (`otel-collector.local.yaml`) plus a helper launcher (`scripts/run_local_otel_collector.sh`). They expose the standard OTLP gRPC (`:4317`) and HTTP (`:4318`) ports, batch incoming spans, and dump everything to `collector_logs/financial_analyzer_spans.jsonl` while also echoing spans to stdout.
+The repo ships a tiny OpenTelemetry Collector config (`otel-collector.local.yaml`) plus a helper launcher (`mas_traces/run_local_otel_collector.sh`). They expose the standard OTLP gRPC (`:4317`) and HTTP (`:4318`) ports, batch incoming spans, and dump everything to `collector_logs/financial_analyzer_spans.jsonl` while also echoing spans to stdout.
 
 ```bash
 cd mas_traces/mcp_financial_analyzer_benchmark
 # Requires Docker; override OTEL_COLLECTOR_IMAGE if you host your own build
-./scripts/run_local_otel_collector.sh
+../run_local_otel_collector.sh
 ```
 
 If you already installed `otelcol-contrib`, run it directly instead:

@@ -35,7 +35,7 @@ from mcp_agent.workflows.evaluator_optimizer.evaluator_optimizer import (
     EvaluatorOptimizerLLM,
     QualityRating,
 )
-from system_metrics import SystemMetricsMonitor
+from mas_traces.system_metrics import SystemMetricsMonitor
 
 # Configuration values
 OUTPUT_DIR = "company_reports"
