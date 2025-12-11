@@ -123,6 +123,23 @@ Key environment knobs:
 
 ---
 
+## Translating Trace Logs to the OTEL Template
+
+Need to reshape the JSONL spans under `logs/` so they match `otel_template/otel_span_template.json`? Use the helper script:
+
+```bash
+cd mas_traces/mcp_financial_analyzer_benchmark
+python scripts/translate_traces.py --source logs --dest translated_traces
+```
+
+- `--source` defaults to `logs/`.
+- `--dest` defaults to `translated_traces/`; the script creates it if needed.
+- Pass `--overwrite` to regenerate an existing translated file.
+
+Each original `financial_analyzer_traces-<run>.jsonl` becomes `<run>.translated.json` with an array of template-aligned spans. Original logs stay untouched.
+
+---
+
 ## Troubleshooting Notes
 
 - **Search flakiness:** Prefer Tavily when possible, or add multiple providers so the agent can fall back.

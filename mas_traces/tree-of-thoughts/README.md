@@ -81,4 +81,19 @@ mas_traces/tree-of-thoughts
 └── tot.ipynb                    # Original notebook for reference
 ```
 
+## 4. Converting spans to the OTEL template
+
+Every run already emits `logs/run_<timestamp>.otel.jsonl`, but if you need to reshape those spans to match `otel_template/otel_span_template.json`, you can run the translator:
+
+```bash
+cd mas_traces/tree-of-thoughts
+python scripts/translate_traces.py --source logs --dest translated_traces
+```
+
+- `--source` defaults to `logs/`.
+- `--dest` defaults to `translated_traces/`.
+- Pass `--overwrite` to regenerate outputs.
+
+Each `run_<ts>.otel.jsonl` becomes `run_<ts>.otel.translated.json` (array of spans in the canonical format) without mutating the originals.
+
 To try different puzzles, edit the CSV under `data/` or provide `--dataset-file`. The benchmark structure makes it easy to integrate future scoring strategies or alternative search heuristics while keeping the notebook implementation intact for educational purposes.
