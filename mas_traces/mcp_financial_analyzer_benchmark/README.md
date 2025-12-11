@@ -67,8 +67,7 @@ Once you see `Everything is ready. Begin running and processing data.`, point th
 ```bash
 python main.py "Parker-Hannifin Corporation" \
   --llm-backend openai \
-  --search-providers tavily \
-  --otel-remote-endpoint "http://localhost:4318/v1/traces"
+  --search-providers tavily
 ```
 
 To enable OpenTelemetry tracing, ensure the `otel` field is properly configured in `mcp_agent.config.yaml`:
@@ -80,6 +79,9 @@ otel:
         endpoint: "http://localhost:4318/v1/traces"
   sample_rate: 1.0
 ```
+
+> If you want to disable sending to remote collector, just remove the `otlp` entry here.
+> And bring back the `file` entry. (You can also use comment to do all these)
 
 ---
 

@@ -61,7 +61,7 @@ mcp:
 
 # Default OpenAI configuration
 openai:
-  default_model: gpt-4o
+  default_model: gpt-4o-mini
 
 google:
   default_model: gemini-2.5-flash-lite
