@@ -1,1 +1,10 @@
 __pycache__/
+*.jsonl
+*.json
+*.csv
+
+# Ignore all Markdown files
+*.md
+
+# Exclude README.md from being ignored
+!README.md

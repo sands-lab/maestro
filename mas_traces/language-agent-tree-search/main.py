@@ -31,15 +31,21 @@ from langchain_community.utilities.tavily_search import TavilySearchAPIWrapper
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 from opentelemetry import trace
-from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (
-    SimpleSpanProcessor,
-    SpanExporter,
-    SpanExportResult,
-)
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from mas_traces.langgraph_otel import (
+    DEFAULT_ENVIRONMENT,
+    LangChainUsageCallback,
+    PsutilMetricsRecorder,
+    record_usage_on_span,
+    setup_jsonl_tracing,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("lats-benchmark")
@@ -50,51 +56,9 @@ DEFAULT_DATASET = BENCHMARK_ROOT / "data" / "questions.csv"
 LOG_DIR = BENCHMARK_ROOT / "logs"
 METADATA_VERSION = 1
 TRACE_SERVICE_NAME = "language-agent-tree-search"
-
-
-class FileSpanExporter(SpanExporter):
-    """Writes OpenTelemetry spans to a JSONL file under logs/."""
-
-    def __init__(self, destination: Path) -> None:
-        self.destination = destination
-
-    def export(self, spans) -> SpanExportResult:
-        lines = []
-        for span in spans:
-            payload = {
-                "name": span.name,
-                "context": {
-                    "trace_id": format(span.context.trace_id, "032x"),
-                    "span_id": format(span.context.span_id, "016x"),
-                },
-                "start_time": span.start_time,
-                "end_time": span.end_time,
-                "status": span.status.status_code.name,
-                "attributes": dict(span.attributes),
-            }
-            lines.append(json.dumps(payload))
-
-        with self.destination.open("a", encoding="utf-8") as handle:
-            handle.write("\n".join(lines) + "\n")
-
-        return SpanExportResult.SUCCESS
-
-    def shutdown(self) -> None:  # pragma: no cover - nothing to clean up
-        return None
-
-
-def setup_tracer(run_id: str) -> tuple[trace.Tracer, Path, TracerProvider]:
-    """Configure OpenTelemetry tracing and return the tracer + log path."""
-    LOG_DIR.mkdir(exist_ok=True, parents=True)
-    trace_path = LOG_DIR / f"run_{run_id}.otel.jsonl"
-    trace_path.touch(exist_ok=True)
-    resource = Resource.create({"service.name": TRACE_SERVICE_NAME})
-    provider = TracerProvider(resource=resource)
-    exporter = FileSpanExporter(trace_path)
-    provider.add_span_processor(SimpleSpanProcessor(exporter))
-    trace.set_tracer_provider(provider)
-    tracer = trace.get_tracer(APP_NAME)
-    return tracer, trace_path, provider
+TRACE_SERVICE_VERSION = "1.0.0"
+METRICS_DIR = BENCHMARK_ROOT / "metrics"
+DEFAULT_METRICS_INTERVAL = float(os.getenv("LATS_METRICS_INTERVAL_SECONDS", "15") or 15.0)
 
 
 class Reflection(BaseModel):
@@ -310,8 +274,8 @@ def build_graph(
     )
 
     @as_runnable
-    def reflection_chain(inputs) -> Reflection:
-        tool_choices = reflection_llm_chain.invoke(inputs)
+    def reflection_chain(inputs, config: RunnableConfig | None = None) -> Reflection:
+        tool_choices = reflection_llm_chain.invoke(inputs, config=config)
         reflection = tool_choices[0]
         if not isinstance(inputs["candidate"][-1], AIMessage):
             reflection.found_solution = False
@@ -329,8 +293,8 @@ def build_graph(
     )
     parser = JsonOutputToolsParser(return_id=True)
 
-    def generate_initial_response(state: TreeState) -> Dict[str, object]:
-        res = initial_answer_chain.invoke({"input": state["input"]})
+    def generate_initial_response(state: TreeState, config: RunnableConfig) -> Dict[str, object]:
+        res = initial_answer_chain.invoke({"input": state["input"]}, config=config)
         parsed = parser.invoke(res)
         tool_responses = [
             tool_node.invoke(
@@ -343,13 +307,15 @@ def build_graph(
                             ],
                         )
                     ]
-                }
+                },
+                config=config,
             )
             for r in parsed
         ]
         output_messages = [res] + [tr["messages"][0] for tr in tool_responses]
         reflection = reflection_chain.invoke(
-            {"input": state["input"], "candidate": output_messages}
+            {"input": state["input"], "candidate": output_messages},
+            config=config,
         )
         return {
             **state,
@@ -375,7 +341,8 @@ def build_graph(
         best_candidate = select(root)
         messages = best_candidate.get_trajectory()
         new_candidates = expansion_chain.invoke(
-            {"input": state["input"], "messages": messages}, config
+            {"input": state["input"], "messages": messages},
+            config,
         )
         parsed = parser.batch(new_candidates)
         flattened = [
@@ -400,7 +367,8 @@ def build_graph(
                                 ],
                             )
                         ]
-                    }
+                    },
+                    config=config,
                 ),
             )
             for i, tool_call in flattened
@@ -507,26 +475,34 @@ def run_question(
     tracer: trace.Tracer | None = None,
 ) -> RunResult:
     events: List[str] = []
-    config = {"configurable": {"N": branching_factor}}
+    usage_callback = LangChainUsageCallback()
+    config = {
+        "configurable": {"N": branching_factor},
+        "callbacks": [usage_callback],
+    }
     start = time.perf_counter()
     root_node: Optional[Node] = None
     span_attrs = {
+        "agent.name": f"{APP_NAME}.question",
         "question_index": index,
         "branching_factor": branching_factor,
         "question": question,
     }
-    run_span = (
+    span_context = (
         tracer.start_as_current_span("lats.question", attributes=span_attrs)
         if tracer
         else nullcontext()
     )
-    with run_span:
+    with span_context as span:
         try:
             for event in graph.stream({"input": question}, config=config):
                 summary = _summarize_event(event)
                 events.append(summary)
                 for node_name, payload in event.items():
-                    node_attrs = {"node": node_name}
+                    node_attrs = {
+                        "node": node_name,
+                        "agent.name": f"{APP_NAME}.node.{node_name}",
+                    }
                     node_span = (
                         tracer.start_as_current_span(
                             f"lats.node.{node_name}", attributes=node_attrs
@@ -543,6 +519,7 @@ def run_question(
         except Exception as exc:
             duration = time.perf_counter() - start
             logger.error("Graph execution failed for question %s: %s", index, exc)
+            record_usage_on_span(span, usage_callback)
             return RunResult(
                 index=index,
                 question=question,
@@ -556,45 +533,49 @@ def run_question(
                 error=str(exc),
             )
 
-    duration = time.perf_counter() - start
-    if not root_node:
-        events.append("Graph returned no root node.")
+        duration = time.perf_counter() - start
+        if not root_node:
+            events.append("Graph returned no root node.")
+            record_usage_on_span(span, usage_callback)
+            return RunResult(
+                index=index,
+                question=question,
+                solved=False,
+                height=0,
+                visits=0,
+                duration=duration,
+                best_response=None,
+                reflection_score=None,
+                events=events,
+                error="missing-root",
+            )
+        solution_node = root_node.get_best_solution()
+        trajectory = solution_node.get_trajectory(include_reflections=False)
+        last_message = trajectory[-1] if trajectory else None
+        best_response = None
+        if isinstance(last_message, (AIMessage, ToolMessage, HumanMessage)):
+            best_response = (
+                last_message.content
+                if isinstance(last_message.content, str)
+                else str(last_message.content)
+            )
+        solved = bool(solution_node.is_solved)
+        events.append(
+            f"Final height={root_node.height}, visits={root_node.visits}, "
+            f"node_value={solution_node.value:.3f}, solved={solved}"
+        )
+        record_usage_on_span(span, usage_callback)
         return RunResult(
             index=index,
             question=question,
-            solved=False,
-            height=0,
-            visits=0,
+            solved=solved,
+            height=root_node.height,
+            visits=root_node.visits,
             duration=duration,
-            best_response=None,
-            reflection_score=None,
+            best_response=best_response,
+            reflection_score=solution_node.reflection.score if solution_node.reflection else None,
             events=events,
-            error="missing-root",
         )
-    solution_node = root_node.get_best_solution()
-    trajectory = solution_node.get_trajectory(include_reflections=False)
-    last_message = trajectory[-1] if trajectory else None
-    best_response = None
-    if isinstance(last_message, (AIMessage, ToolMessage, HumanMessage)):
-        best_response = (
-            last_message.content if isinstance(last_message.content, str) else str(last_message.content)
-        )
-    solved = bool(solution_node.is_solved)
-    events.append(
-        f"Final height={root_node.height}, visits={root_node.visits}, "
-        f"node_value={solution_node.value:.3f}, solved={solved}"
-    )
-    return RunResult(
-        index=index,
-        question=question,
-        solved=solved,
-        height=root_node.height,
-        visits=root_node.visits,
-        duration=duration,
-        best_response=best_response,
-        reflection_score=solution_node.reflection.score if solution_node.reflection else None,
-        events=events,
-    )
 
 
 def write_run_artifacts(
@@ -603,6 +584,7 @@ def write_run_artifacts(
     dataset_source: str,
     run_id: str,
     trace_log_path: Optional[Path],
+    metrics_log_path: Optional[Path],
 ) -> None:
     LOG_DIR.mkdir(exist_ok=True, parents=True)
     log_path = LOG_DIR / f"run_{run_id}.log"
@@ -640,6 +622,13 @@ def write_run_artifacts(
             rel_path = str(trace_log_path)
         metadata["trace_log"] = rel_path
         metadata["trace_log_basename"] = trace_log_path.name
+    if metrics_log_path:
+        try:
+            rel_metrics = os.path.relpath(metrics_log_path, start=BENCHMARK_ROOT)
+        except ValueError:
+            rel_metrics = str(metrics_log_path)
+        metadata["metrics_log"] = rel_metrics
+        metadata["metrics_log_basename"] = metrics_log_path.name
     metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     logger.info("Wrote %s and %s", log_path.name, metadata_path.name)
 
@@ -694,6 +683,15 @@ def parse_args() -> argparse.Namespace:
         default=5,
         help="Maximum Tavily search results returned per tool invocation.",
     )
+    parser.add_argument(
+        "--metrics-interval",
+        type=float,
+        default=DEFAULT_METRICS_INTERVAL,
+        help=(
+            "Seconds between psutil samples for system metrics "
+            f"(default {DEFAULT_METRICS_INTERVAL}, override via LATS_METRICS_INTERVAL_SECONDS)."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -703,14 +701,41 @@ def main() -> None:
     tracer: Optional[trace.Tracer] = None
     trace_log_path: Optional[Path] = None
     provider: Optional[TracerProvider] = None
+    metrics_recorder: Optional[PsutilMetricsRecorder] = None
+    metrics_log_path: Optional[Path] = None
     try:
-        tracer, trace_log_path, provider = setup_tracer(run_id)
+        tracer, trace_log_path, provider = setup_jsonl_tracing(
+            app_name=APP_NAME,
+            service_name=TRACE_SERVICE_NAME,
+            service_version=TRACE_SERVICE_VERSION,
+            log_dir=LOG_DIR,
+            run_id=run_id,
+            environment=DEFAULT_ENVIRONMENT,
+        )
         logger.info("OpenTelemetry trace log: %s", trace_log_path)
     except Exception as exc:  # pragma: no cover - tracing is optional
         logger.warning("Unable to initialize OpenTelemetry tracing: %s", exc)
         tracer = None
         trace_log_path = None
         provider = None
+    try:
+        metrics_recorder = PsutilMetricsRecorder(
+            service_name=TRACE_SERVICE_NAME,
+            service_version=TRACE_SERVICE_VERSION,
+            run_id=run_id,
+            output_dir=METRICS_DIR,
+            environment=DEFAULT_ENVIRONMENT,
+            scope=f"{APP_NAME}.system-metrics",
+            logger=logger,
+            interval_seconds=max(1.0, args.metrics_interval),
+        )
+        metrics_log_path = metrics_recorder.output_path
+        metrics_recorder.start()
+        logger.info("System metrics log: %s", metrics_log_path)
+    except Exception as exc:  # pragma: no cover - metrics optional
+        logger.warning("Unable to initialize system metrics recorder: %s", exc)
+        metrics_recorder = None
+        metrics_log_path = None
     try:
         dataset_path = Path(args.questions_file)
         questions = load_questions(dataset_path)
@@ -748,8 +773,11 @@ def main() -> None:
             dataset_source=str(dataset_path),
             run_id=run_id,
             trace_log_path=trace_log_path,
+            metrics_log_path=metrics_log_path,
         )
     finally:
+        if metrics_recorder:
+            metrics_recorder.stop()
         if provider:
             provider.shutdown()
 
