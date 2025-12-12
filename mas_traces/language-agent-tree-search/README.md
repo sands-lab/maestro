@@ -34,7 +34,8 @@ python main.py \
   --temperature 0.3 \
   --max-depth 5 \
   --branching-factor 5 \
-  --questions-file data/questions.csv
+  --questions-file data/questions.csv \
+  --evidence-source tavily
 ```
 
 Each run now writes:
@@ -64,11 +65,33 @@ We also tag each span’s `gen_ai.operation.name` so dashboards can distinguish 
 | `--temperature` | Forwarded to both the initial candidate and expansion chains. |
 | `--max-depth` | Maximum tree height before the search stops (default `5`). |
 | `--branching-factor` | Number of candidate continuations sampled per expansion round (default `5`). |
-| `--questions-file` | CSV with a `question` column. Defaults to `data/questions.csv`. |
+| `--questions-file` | CSV with a `question` column (HotpotQA sampler outputs this). Defaults to `data/questions.csv`. |
+| `--evidence-source` | `tavily` (default) uses Tavily search results; `dataset` injects reference passages from the CSV and disables Tavily calls. |
 | `--start-index` | 0-based index in the dataset to start from (default `0`). |
 | `--num-questions` | Number of questions to run sequentially (default `1`). |
 | `--tavily-max-results` | Cap the Tavily search tool output (default `5`). |
 | `--metrics-interval` | Seconds between psutil samples for system metrics (default `15`, override via `LATS_METRICS_INTERVAL_SECONDS`). |
+
+### Sampling HotpotQA locally
+
+Use the built-in helper to turn the official JSON dumps into CSVs with gold paragraphs plus distractors so you can benchmark with or without external search:
+
+```bash
+cd mas_traces/language-agent-tree-search
+python tools/sample_hotpot_questions.py \
+  --source data/hotpot_dev_distractor_v1.json \
+  --dest data/hotpot_dev_questions.csv \
+  --sample-size 200
+```
+
+Once the CSV exists you can run the agent using the dataset-provided context instead of Tavily by passing `--evidence-source dataset`, for example:
+
+```bash
+python main.py \
+  --questions-file data/hotpot_dev_questions.csv \
+  --evidence-source dataset \
+  --num-questions 5
+```
 
 ## 3. Project layout
 
@@ -80,6 +103,7 @@ mas_traces/language-agent-tree-search
 ├── main.py                     # CLI benchmark implementation
 ├── README.md                   # This guide
 ├── requirements.txt            # Python dependencies
+├── tools/sample_hotpot_questions.py # HotpotQA sampling helper for datasets
 └── lats.ipynb                  # Original notebook for reference
 ```
 

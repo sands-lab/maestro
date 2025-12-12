@@ -195,6 +195,14 @@ class Node:
 class TreeState(TypedDict):
     root: Node
     input: str
+    references: Optional[str]
+
+
+@dataclass
+class QuestionRecord:
+    prompt: str
+    references: Optional[str] = None
+    metadata: Optional[Dict[str, str]] = None
 
 
 def _summarize_message(msg: BaseMessage) -> str:
@@ -255,28 +263,46 @@ def build_graph(
     temperature: float,
     tavily_max_results: int,
     max_depth: int,
+    evidence_source: str,
 ) -> StateGraph:
     llm = ChatOpenAI(model=model, temperature=temperature)
-    search = TavilySearchAPIWrapper()
-    tavily_tool = TavilySearchResults(api_wrapper=search, max_results=tavily_max_results)
-    tool_node = ToolNode(tools=[tavily_tool])
-    tools = [tavily_tool]
+    use_tavily = evidence_source == "tavily"
+    use_dataset_references = evidence_source == "dataset"
+    tools = []
+    tool_node: ToolNode | None = None
+
+    if use_tavily:
+        search = TavilySearchAPIWrapper()
+        tavily_tool = TavilySearchResults(
+            api_wrapper=search, max_results=tavily_max_results
+        )
+        tool_node = ToolNode(tools=[tavily_tool])
+        tools = [tavily_tool]
+
     component_tracer = trace.get_tracer(APP_NAME)
 
     def _invoke_tavily(payload, invoke_config):
         """Forward LangGraph config into Tavily tool node for OTEL spans."""
 
+        if not use_tavily or tool_node is None:
+            raise RuntimeError("Tavily tool invoked while disabled")
         return tool_node.invoke(payload, config=invoke_config)
     # Follow otel_span_template guidance: gen_ai.operation.name identifies call_llm,
     # execute_tool, or invoke_agent for every span we emit.
 
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", "Reflect and grade the assistant response to the user question."),
-            ("user", "{input}"),
-            MessagesPlaceholder(variable_name="candidate"),
-        ]
-    )
+    reflection_messages = [
+        ("system", "Reflect and grade the assistant response to the user question."),
+        ("user", "{input}"),
+    ]
+    if use_dataset_references:
+        reflection_messages.append(
+            (
+                "user",
+                "Reference passages available to the assistant:\n{references}",
+            )
+        )
+    reflection_messages.append(MessagesPlaceholder(variable_name="candidate"))
+    prompt = ChatPromptTemplate.from_messages(reflection_messages)
 
     reflection_llm_chain = (
         prompt
@@ -294,21 +320,38 @@ def build_graph(
             reflection.found_solution = False
         return reflection
 
-    prompt_template = ChatPromptTemplate.from_messages(
-        [
-            ("system", "You are an AI assistant."),
-            ("user", "{input}"),
-            MessagesPlaceholder(variable_name="messages", optional=True),
-        ]
-    )
-    initial_answer_chain = prompt_template | llm.bind_tools(tools=tools).with_config(
+    system_message = "You are an AI assistant."
+    if use_dataset_references:
+        system_message += " Use only the supplied reference passages; do not invent facts outside them."
+    prompt_messages = [
+        ("system", system_message),
+        ("user", "{input}"),
+    ]
+    if use_dataset_references:
+        prompt_messages.append(
+            (
+                "user",
+                "Reference passages you must rely on:\n{references}",
+            )
+        )
+    prompt_messages.append(MessagesPlaceholder(variable_name="messages", optional=True))
+    prompt_template = ChatPromptTemplate.from_messages(prompt_messages)
+
+    conversational_llm = llm.bind_tools(tools=tools) if use_tavily else llm
+    initial_answer_chain = prompt_template | conversational_llm.with_config(
         run_name="GenerateInitialCandidate"
     )
-    parser = JsonOutputToolsParser(return_id=True)
+    parser = JsonOutputToolsParser(return_id=True) if use_tavily else None
 
     def generate_initial_response(state: TreeState, config: RunnableConfig) -> Dict[str, object]:
         def _invoke_initial(updated_config: RunnableConfig | None):
-            return initial_answer_chain.invoke({"input": state["input"]}, config=updated_config)
+            return initial_answer_chain.invoke(
+                {
+                    "input": state["input"],
+                    "references": state.get("references") or "",
+                },
+                config=updated_config,
+            )
 
         res = run_llm_with_span(
             component_tracer,
@@ -323,40 +366,47 @@ def build_graph(
                 "gen_ai.request.model": model,
             },
         )
-        parsed = parser.invoke(res)
-
         tool_messages: List[dict] = []
-        for r in parsed:
-            tool_payload = {
-                "messages": [
-                    AIMessage(
-                        content="",
-                        tool_calls=[
-                            {"name": r["type"], "args": r["args"], "id": r["id"]}
-                        ],
-                    )
-                ]
-            }
-            result = run_tool_with_span(
-                component_tracer,
-                "lats.execute_tool.tavily",
-                agent_name=f"{APP_NAME}.tool.tavily",
-                tool_name="tavily_search",
-                payload=tool_payload,
-                invoke_fn=_invoke_tavily,
-                config=config,
-                extra_attributes={
-                    "gen_ai.tool.name": "tavily_search",
-                    "gen_ai.tool.type": "FunctionTool",
-                    "gen_ai.system": "tavily",
-                },
-            )
-            tool_messages.append(result)
+        if parser and use_tavily:
+            parsed = parser.invoke(res)
 
-        output_messages = [res] + [tr["messages"][0] for tr in tool_messages]
+            for r in parsed:
+                tool_payload = {
+                    "messages": [
+                        AIMessage(
+                            content="",
+                            tool_calls=[
+                                {"name": r["type"], "args": r["args"], "id": r["id"]}
+                            ],
+                        )
+                    ]
+                }
+                result = run_tool_with_span(
+                    component_tracer,
+                    "lats.execute_tool.tavily",
+                    agent_name=f"{APP_NAME}.tool.tavily",
+                    tool_name="tavily_search",
+                    payload=tool_payload,
+                    invoke_fn=_invoke_tavily,
+                    config=config,
+                    extra_attributes={
+                        "gen_ai.tool.name": "tavily_search",
+                        "gen_ai.tool.type": "FunctionTool",
+                        "gen_ai.system": "tavily",
+                    },
+                )
+                tool_messages.append(result)
+
+        output_messages = [res]
+        if tool_messages:
+            output_messages.extend(tr["messages"][0] for tr in tool_messages)
         def _invoke_reflection(updated_config: RunnableConfig | None):
             return reflection_chain.invoke(
-                {"input": state["input"], "candidate": output_messages},
+                {
+                    "input": state["input"],
+                    "candidate": output_messages,
+                    "references": state.get("references") or "",
+                },
                 config=updated_config,
             )
 
@@ -379,7 +429,7 @@ def build_graph(
         }
 
     def generate_candidates(messages: ChatPromptValue, config: RunnableConfig):
-        bound_kwargs = llm.bind_tools(tools=tools).kwargs
+        bound_kwargs = conversational_llm.kwargs
 
         def _invoke_expand(updated_config: RunnableConfig | None):
             callbacks = (updated_config or {}).get("callbacks")
@@ -414,46 +464,51 @@ def build_graph(
         best_candidate = select(root)
         messages = best_candidate.get_trajectory()
         new_candidates = expansion_chain.invoke(
-            {"input": state["input"], "messages": messages},
+            {
+                "input": state["input"],
+                "messages": messages,
+                "references": state.get("references") or "",
+            },
             config,
         )
-        parsed = parser.batch(new_candidates)
-        flattened = [
-            (i, tool_call)
-            for i, tool_calls in enumerate(parsed)
-            for tool_call in tool_calls
-        ]
         tool_responses = []
-        for i, tool_call in flattened:
-            tool_payload = {
-                "messages": [
-                    AIMessage(
-                        content="",
-                        tool_calls=[
-                            {
-                                "name": tool_call["type"],
-                                "args": tool_call["args"],
-                                "id": tool_call["id"],
-                            }
-                        ],
-                    )
-                ]
-            }
-            result = run_tool_with_span(
-                component_tracer,
-                "lats.execute_tool.tavily",
-                agent_name=f"{APP_NAME}.tool.tavily",
-                tool_name="tavily_search",
-                payload=tool_payload,
-                invoke_fn=_invoke_tavily,
-                config=config,
-                extra_attributes={
-                    "gen_ai.tool.name": "tavily_search",
-                    "gen_ai.tool.type": "FunctionTool",
-                    "gen_ai.system": "tavily",
-                },
-            )
-            tool_responses.append((i, result))
+        if parser and use_tavily:
+            parsed = parser.batch(new_candidates)
+            flattened = [
+                (i, tool_call)
+                for i, tool_calls in enumerate(parsed)
+                for tool_call in tool_calls
+            ]
+            for i, tool_call in flattened:
+                tool_payload = {
+                    "messages": [
+                        AIMessage(
+                            content="",
+                            tool_calls=[
+                                {
+                                    "name": tool_call["type"],
+                                    "args": tool_call["args"],
+                                    "id": tool_call["id"],
+                                }
+                            ],
+                        )
+                    ]
+                }
+                result = run_tool_with_span(
+                    component_tracer,
+                    "lats.execute_tool.tavily",
+                    agent_name=f"{APP_NAME}.tool.tavily",
+                    tool_name="tavily_search",
+                    payload=tool_payload,
+                    invoke_fn=_invoke_tavily,
+                    config=config,
+                    extra_attributes={
+                        "gen_ai.tool.name": "tavily_search",
+                        "gen_ai.tool.type": "FunctionTool",
+                        "gen_ai.system": "tavily",
+                    },
+                )
+                tool_responses.append((i, result))
         collected_responses: Dict[int, List[ToolMessage]] = defaultdict(list)
         for i, resp in tool_responses:
             collected_responses[i].append(resp["messages"][0])
@@ -462,7 +517,12 @@ def build_graph(
             output_messages.append([candidate] + collected_responses[i])
 
         reflection_inputs = [
-            {"input": state["input"], "candidate": msgs} for msgs in output_messages
+            {
+                "input": state["input"],
+                "candidate": msgs,
+                "references": state.get("references") or "",
+            }
+            for msgs in output_messages
         ]
 
         def _invoke_reflection_batch(updated_config: RunnableConfig | None):
@@ -514,7 +574,27 @@ def build_graph(
     return builder.compile()
 
 
-def load_questions(path: Path) -> List[str]:
+REFERENCE_COLUMNS = [
+    ("gold_context", "Gold Context"),
+    ("supporting_context", "Supporting Context"),
+    ("supporting_facts", "Supporting Facts"),
+    ("context", "Context"),
+    ("references", "References"),
+    ("distractors", "Distractor Passages"),
+]
+
+
+def _extract_references_from_row(row: Dict[str, str]) -> Optional[str]:
+    blocks = []
+    for column, label in REFERENCE_COLUMNS:
+        value = row.get(column)
+        if value:
+            blocks.append(f"{label}:\n{value.strip()}")
+    combined = "\n\n".join(blocks).strip()
+    return combined or None
+
+
+def load_questions(path: Path) -> List[QuestionRecord]:
     if not path.exists():
         raise FileNotFoundError(f"Questions file not found: {path}")
     with path.open("r", encoding="utf-8") as handle:
@@ -523,19 +603,28 @@ def load_questions(path: Path) -> List[str]:
         return []
     handle_lines = sample.splitlines()
     reader = csv.DictReader(handle_lines)
-    questions: List[str] = []
-    if reader.fieldnames and "question" in [col.lower() for col in reader.fieldnames]:
-        question_col = next(
-            column for column in reader.fieldnames if column.lower() == "question"
-        )
-        for row in reader:
-            value = row.get(question_col)
-            if value:
-                questions.append(value.strip())
+    questions: List[QuestionRecord] = []
+    if reader.fieldnames:
+        lower_to_actual = {column.lower(): column for column in reader.fieldnames}
+        question_col = lower_to_actual.get("question")
+        if question_col:
+            for row in reader:
+                value = row.get(question_col)
+                if not value:
+                    continue
+                references = _extract_references_from_row(row)
+                metadata = {k: v for k, v in row.items() if v}
+                questions.append(
+                    QuestionRecord(prompt=value.strip(), references=references, metadata=metadata)
+                )
         if questions:
             return questions
     # Fallback to plain text (one question per line)
-    return [line.strip() for line in handle_lines if line.strip()]
+    return [
+        QuestionRecord(prompt=line.strip())
+        for line in handle_lines
+        if line.strip()
+    ]
 
 
 @dataclass
@@ -567,7 +656,7 @@ class RunResult:
 
 def run_question(
     graph: StateGraph,
-    question: str,
+    question: QuestionRecord,
     index: int,
     branching_factor: int,
     tracer: trace.Tracer | None = None,
@@ -583,14 +672,15 @@ def run_question(
     span_attrs = {
         "question_index": index,
         "branching_factor": branching_factor,
-        "question": question,
+        "question": question.prompt,
+        "references_available": bool(question.references),
     }
     span_context = (
         invoke_agent_span(
             tracer,
             "lats.question",
             agent_name=f"{APP_NAME}.question",
-            payload=question,
+            payload=question.prompt,
             in_process_call=True,
             extra_attributes=span_attrs,
         )
@@ -599,7 +689,11 @@ def run_question(
     )
     with span_context as (span, question_input_bytes):
         try:
-            for event in graph.stream({"input": question}, config=config):
+            state_payload = {
+                "input": question.prompt,
+                "references": question.references or "",
+            }
+            for event in graph.stream(state_payload, config=config):
                 summary = _summarize_event(event)
                 events.append(summary)
                 for node_name, payload in event.items():
@@ -628,7 +722,7 @@ def run_question(
             record_usage_on_span(span, usage_callback)
             return RunResult(
                 index=index,
-                question=question,
+                question=question.prompt,
                 solved=False,
                 height=0,
                 visits=0,
@@ -645,7 +739,7 @@ def run_question(
             record_usage_on_span(span, usage_callback)
             return RunResult(
                 index=index,
-                question=question,
+                question=question.prompt,
                 solved=False,
                 height=0,
                 visits=0,
@@ -675,7 +769,7 @@ def run_question(
         record_usage_on_span(span, usage_callback)
         return RunResult(
             index=index,
-            question=question,
+            question=question.prompt,
             solved=solved,
             height=root_node.height,
             visits=root_node.visits,
@@ -721,6 +815,7 @@ def write_run_artifacts(
         "max_depth": args.max_depth,
         "branching_factor": args.branching_factor,
         "tavily_max_results": args.tavily_max_results,
+        "evidence_source": args.evidence_source,
         "questions": [result.to_metadata() for result in results],
     }
     if trace_log_path:
@@ -772,6 +867,15 @@ def parse_args() -> argparse.Namespace:
         "--questions-file",
         default=str(DEFAULT_DATASET),
         help="CSV or plaintext file containing questions to benchmark.",
+    )
+    parser.add_argument(
+        "--evidence-source",
+        choices=("tavily", "dataset"),
+        default="tavily",
+        help=(
+            "Where the agent retrieves supporting information: use Tavily search "
+            "(default) or rely on dataset-provided references."
+        ),
     )
     parser.add_argument(
         "--start-index",
@@ -852,20 +956,33 @@ def main() -> None:
         if args.start_index >= len(questions):
             raise SystemExit("Start index exceeds dataset length.")
         end = min(len(questions), args.start_index + args.num_questions)
+        subset = questions[args.start_index:end]
+        if args.evidence_source == "dataset":
+            missing = [
+                args.start_index + offset
+                for offset, record in enumerate(subset)
+                if not record.references
+            ]
+            if missing:
+                preview = ", ".join(str(idx) for idx in missing[:5])
+                raise SystemExit(
+                    "Dataset evidence selected but missing references for question "
+                    f"indices: {preview}"
+                )
         selected = [
-            (i, question)
-            for i, question in enumerate(questions[args.start_index:end], start=args.start_index)
+            (i, question) for i, question in enumerate(subset, start=args.start_index)
         ]
         graph = build_graph(
             model=args.model,
             temperature=args.temperature,
             tavily_max_results=args.tavily_max_results,
             max_depth=max(args.max_depth, 1),
+            evidence_source=args.evidence_source,
         )
 
         results: List[RunResult] = []
         for dataset_index, question in selected:
-            logger.info("Running question %s: %s", dataset_index, question)
+            logger.info("Running question %s: %s", dataset_index, question.prompt)
             result = run_question(
                 graph=graph,
                 question=question,
