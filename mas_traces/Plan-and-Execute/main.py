@@ -1,7 +1,5 @@
 """Command-line translation of the Plan-and-Execute notebook."""
 
-from __future__ import annotations
-
 import argparse
 import asyncio
 import json
@@ -14,24 +12,48 @@ from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Annotated, List, Tuple
+from typing import Annotated, Dict, List, Optional, Tuple
 
+try:  # pragma: no cover - optional import shim
+    from langchain.agents import create_agent as _create_agent
+
+    def create_plan_agent(llm, tools, prompt):
+        return _create_agent(llm, tools, system_prompt=prompt)
+except ImportError:  # pragma: no cover - fall back to legacy name
+    try:
+        from langchain.agents import create_react_agent as _create_agent
+
+        def create_plan_agent(llm, tools, prompt):
+            return _create_agent(llm, tools, prompt=prompt)
+    except ImportError:  # pragma: no cover
+        from langgraph.prebuilt import create_react_agent as _create_agent  # type: ignore
+
+        def create_plan_agent(llm, tools, prompt):
+            return _create_agent(llm, tools, prompt=prompt)
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
-from langgraph.prebuilt import create_react_agent
 from opentelemetry import trace
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (
-    SimpleSpanProcessor,
-    SpanExporter,
-    SpanExportResult,
-)
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from mas_traces.langgraph_otel import (
+    DEFAULT_ENVIRONMENT,
+    LangChainUsageCallback,
+    PsutilMetricsRecorder,
+    invoke_agent_span,
+    record_invoke_agent_output,
+    record_usage_on_span,
+    run_llm_with_span,
+    setup_jsonl_tracing,
+)
 
 warnings.filterwarnings(
     "ignore",
@@ -41,57 +63,20 @@ warnings.filterwarnings(
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 LOGGER = logging.getLogger("plan-and-execute")
-LOG_DIR = Path(__file__).resolve().parent / "logs"
+BENCHMARK_ROOT = Path(__file__).resolve().parent
+LOG_DIR = BENCHMARK_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
+METRICS_DIR = BENCHMARK_ROOT / "metrics"
 DEFAULT_OBJECTIVE = "what is the hometown of the mens 2024 Australia open winner?"
 RUN_METADATA_VERSION = 1
 APP_NAME = "plan_and_execute_benchmark"
 TRACE_SERVICE_NAME = "plan-and-execute"
-
-
-class FileSpanExporter(SpanExporter):
-    """Write OpenTelemetry spans to a JSONL file under logs/."""
-
-    def __init__(self, destination: Path) -> None:
-        self.destination = destination
-
-    def export(self, spans) -> SpanExportResult:
-        lines = []
-        for span in spans:
-            payload = {
-                "name": span.name,
-                "context": {
-                    "trace_id": format(span.context.trace_id, "032x"),
-                    "span_id": format(span.context.span_id, "016x"),
-                },
-                "start_time": span.start_time,
-                "end_time": span.end_time,
-                "status": span.status.status_code.name,
-                "attributes": dict(span.attributes),
-            }
-            lines.append(json.dumps(payload))
-
-        with self.destination.open("a", encoding="utf-8") as handle:
-            handle.write("\n".join(lines) + "\n")
-
-        return SpanExportResult.SUCCESS
-
-    def shutdown(self) -> None:  # pragma: no cover - nothing to clean
-        return None
-
-
-def setup_tracer(run_id: str) -> tuple[trace.Tracer, Path, TracerProvider]:
-    """Configure an OTEL tracer that writes spans to logs/run_<run_id>.otel.jsonl."""
-    LOG_DIR.mkdir(exist_ok=True)
-    log_path = LOG_DIR / f"run_{run_id}.otel.jsonl"
-    log_path.touch(exist_ok=True)
-    resource = Resource.create({"service.name": TRACE_SERVICE_NAME})
-    provider = TracerProvider(resource=resource)
-    exporter = FileSpanExporter(log_path)
-    provider.add_span_processor(SimpleSpanProcessor(exporter))
-    trace.set_tracer_provider(provider)
-    tracer = trace.get_tracer(APP_NAME)
-    return tracer, log_path, provider
+TRACE_SERVICE_VERSION = "1.0.0"
+METRICS_DIR.mkdir(parents=True, exist_ok=True)
+DEFAULT_METRICS_INTERVAL = float(
+    os.getenv("PLAN_EXECUTE_METRICS_INTERVAL_SECONDS", "15") or 15.0
+)
+GEN_AI_SYSTEM = "openai"
 
 
 def _relative_path(path: Path) -> str:
@@ -146,6 +131,40 @@ class BenchmarkConfig:
     max_search_results: int
     agent_temperature: float
     verbose: bool
+    metrics_interval: float
+
+
+def _append_callback(config: Optional[dict], callback) -> dict:
+    """Attach a LangChain callback handler to the config without mutating input."""
+
+    new_config: Dict[str, object] = dict(config or {})
+    callbacks_entry = new_config.get("callbacks")
+
+    if callbacks_entry is None:
+        new_config["callbacks"] = [callback]
+        return new_config
+
+    if isinstance(callbacks_entry, (list, tuple)):
+        callbacks_list = list(callbacks_entry)
+        callbacks_list.append(callback)
+        new_config["callbacks"] = callbacks_list
+        return new_config
+
+    add_handler = getattr(callbacks_entry, "add_handler", None)
+    if callable(add_handler):
+        if hasattr(callbacks_entry, "copy"):
+            try:
+                manager = callbacks_entry.copy()
+            except Exception:  # pragma: no cover - fallback
+                manager = callbacks_entry
+        else:
+            manager = callbacks_entry
+        manager.add_handler(callback)
+        new_config["callbacks"] = manager
+        return new_config
+
+    new_config["callbacks"] = [callbacks_entry, callback]
+    return new_config
 
 
 def ensure_env_vars() -> None:
@@ -195,20 +214,26 @@ def _replanner_prompt() -> ChatPromptTemplate:
     )
 
 
-def build_plan_execute_app(config: BenchmarkConfig):
+def build_plan_execute_app(
+    bench_config: BenchmarkConfig, tracer: trace.Tracer | None = None
+):
     """Create the LangGraph runnable for the benchmark."""
-    tools = [TavilySearchResults(max_results=config.max_search_results)]
-    exec_llm = ChatOpenAI(model=config.executor_model, temperature=config.agent_temperature)
-    agent_executor = create_react_agent(exec_llm, tools, prompt=config.prompt)
+
+    tools = [TavilySearchResults(max_results=bench_config.max_search_results)]
+    exec_llm = ChatOpenAI(
+        model=bench_config.executor_model, temperature=bench_config.agent_temperature
+    )
+    agent_executor = create_plan_agent(exec_llm, tools, prompt=bench_config.prompt)
+    component_tracer = tracer or trace.get_tracer(APP_NAME)
 
     planner = _planner_prompt() | ChatOpenAI(
-        model=config.planner_model, temperature=0
+        model=bench_config.planner_model, temperature=0
     ).with_structured_output(Plan)
     replanner = _replanner_prompt() | ChatOpenAI(
-        model=config.replanner_model, temperature=0
+        model=bench_config.replanner_model, temperature=0
     ).with_structured_output(Act)
 
-    async def execute_step(state: PlanExecute):
+    async def execute_step(state: PlanExecute, config: RunnableConfig | None = None):
         plan = state["plan"]
         plan_str = "\n".join(f"{i + 1}. {step}" for i, step in enumerate(plan))
         task = plan[0]
@@ -216,21 +241,104 @@ def build_plan_execute_app(config: BenchmarkConfig):
             f"For the following plan:\n{plan_str}\n\n"
             f"You are tasked with executing step 1, {task}."
         )
-        agent_response = await agent_executor.ainvoke(
-            {"messages": [("user", task_formatted)]}
-        )
-        content = agent_response["messages"][-1].content
-        return {"past_steps": [(task, content)]}
+        payload = {
+            "task": task,
+            "plan_length": len(plan),
+            "past_steps": state.get("past_steps", []),
+        }
+        with invoke_agent_span(
+            component_tracer,
+            "plan_execute.node.agent",
+            agent_name=f"{APP_NAME}.node.agent",
+            payload=payload,
+            extra_attributes={"plan_execute.node": "agent"},
+        ) as (node_span, input_bytes):
+            usage_callback = LangChainUsageCallback()
+            invoke_config = _append_callback(config, usage_callback)
+            agent_response = await agent_executor.ainvoke(
+                {"messages": [("user", task_formatted)]},
+                config=invoke_config,
+            )
+            if node_span:
+                record_usage_on_span(node_span, usage_callback)
+            content = agent_response["messages"][-1].content
+            output_payload = {"task": task, "result": content}
+            if node_span:
+                record_invoke_agent_output(node_span, output_payload, input_bytes)
+            return {"past_steps": [(task, content)]}
 
-    async def plan_step(state: PlanExecute):
-        plan = await planner.ainvoke({"messages": [("user", state["input"])]})
-        return {"plan": plan.steps}
+    async def plan_step(state: PlanExecute, config: RunnableConfig | None = None):
+        with invoke_agent_span(
+            component_tracer,
+            "plan_execute.node.planner",
+            agent_name=f"{APP_NAME}.node.planner",
+            payload={"input": state["input"]},
+            extra_attributes={"plan_execute.node": "planner"},
+        ) as (node_span, _):
 
-    async def replan_step(state: PlanExecute):
-        output = await replanner.ainvoke(state)
-        if isinstance(output.action, Response):
-            return {"response": output.action.response}
-        return {"plan": output.action.steps}
+            def _invoke(updated_config):
+                return planner.invoke(
+                    {"messages": [("user", state["input"])]}, config=updated_config
+                )
+
+            plan = run_llm_with_span(
+                component_tracer,
+                "plan_execute.call_llm.planner",
+                agent_name=f"{APP_NAME}.llm.planner",
+                phase="planner",
+                config=config,
+                invoke_fn=_invoke,
+                extra_attributes={
+                    "gen_ai.system": GEN_AI_SYSTEM,
+                    "gen_ai.request.model": bench_config.planner_model,
+                },
+            )
+            steps = plan.steps
+            if node_span:
+                node_span.set_attribute("plan_execute.plan.step_count", len(steps))
+                preview = steps[:3] if len(steps) > 3 else steps
+                node_span.set_attribute("plan_execute.plan.preview", preview)
+            return {"plan": steps}
+
+    async def replan_step(state: PlanExecute, config: RunnableConfig | None = None):
+        payload = {
+            "input": state["input"],
+            "plan": state.get("plan"),
+            "past_steps": state.get("past_steps"),
+        }
+        with invoke_agent_span(
+            component_tracer,
+            "plan_execute.node.replan",
+            agent_name=f"{APP_NAME}.node.replan",
+            payload=payload,
+            extra_attributes={"plan_execute.node": "replan"},
+        ) as (node_span, _):
+
+            def _invoke(updated_config):
+                return replanner.invoke(state, config=updated_config)
+
+            output = run_llm_with_span(
+                component_tracer,
+                "plan_execute.call_llm.replanner",
+                agent_name=f"{APP_NAME}.llm.replanner",
+                phase="replanner",
+                config=config,
+                invoke_fn=_invoke,
+                extra_attributes={
+                    "gen_ai.system": GEN_AI_SYSTEM,
+                    "gen_ai.request.model": bench_config.replanner_model,
+                },
+            )
+            if isinstance(output.action, Response):
+                if node_span:
+                    node_span.set_attribute("plan_execute.replan.action", "respond")
+                return {"response": output.action.response}
+            if node_span:
+                node_span.set_attribute("plan_execute.replan.action", "plan")
+                node_span.set_attribute(
+                    "plan_execute.replan.steps", len(output.action.steps)
+                )
+            return {"plan": output.action.steps}
 
     def should_end(state: PlanExecute):
         if state.get("response"):
@@ -304,12 +412,18 @@ def _stream_events(app, config: BenchmarkConfig, log_handle, tracer: trace.Trace
             "max_search_results": config.max_search_results,
             "agent_temperature": config.agent_temperature,
         }
-        run_span = (
-            tracer.start_as_current_span("plan_execute_run", attributes=run_attrs)
+        run_context = (
+            invoke_agent_span(
+                tracer,
+                "plan_execute.run",
+                agent_name=f"{APP_NAME}.run",
+                payload={"question": config.question},
+                extra_attributes=run_attrs,
+            )
             if tracer
-            else nullcontext()
+            else nullcontext((None, 0))
         )
-        with run_span:
+        with run_context as (run_span, input_bytes):
             async for event in app.astream(
                 {"input": config.question}, config={"recursion_limit": config.recursion_limit}
             ):
@@ -321,27 +435,20 @@ def _stream_events(app, config: BenchmarkConfig, log_handle, tracer: trace.Trace
                     }
                     log_handle.write(json.dumps(record) + "\n")
                     log_handle.flush()
-                    node_attrs = {"node": node}
-                    if node == "planner" and isinstance(payload, dict) and "plan" in payload:
-                        node_attrs["plan_length"] = len(payload["plan"])
-                    if node == "replan" and isinstance(payload, dict) and payload.get("response"):
-                        node_attrs["response_length"] = len(payload["response"])
-                    node_span = (
-                        tracer.start_as_current_span(f"node.{node}", attributes=node_attrs)
-                        if tracer
-                        else nullcontext()
-                    )
-                    with node_span:
-                        if config.verbose:
-                            LOGGER.info(_summarize_event(node, payload))
+                    if config.verbose:
+                        LOGGER.info(_summarize_event(node, payload))
                     if node == "__end__":
                         final_response = payload.get("response")
+            if run_span and final_response is not None:
+                record_invoke_agent_output(run_span, final_response, input_bytes)
         return final_response
 
     return _runner()
 
 
 def _write_metadata(path: Path, run_id: str, config: BenchmarkConfig, status: str, **extra):
+    trace_log = extra.pop("trace_log", None)
+    metrics_log = extra.pop("metrics_log", None)
     metadata = {
         "metadata_version": RUN_METADATA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -361,6 +468,10 @@ def _write_metadata(path: Path, run_id: str, config: BenchmarkConfig, status: st
             "TAVILY_API_KEY": bool(os.getenv("TAVILY_API_KEY")),
         },
     }
+    if trace_log:
+        metadata["trace_log"] = trace_log
+    if metrics_log:
+        metadata["metrics_log"] = metrics_log
     metadata.update({k: v for k, v in extra.items() if v is not None})
     path.write_text(json.dumps(metadata, indent=2))
 
@@ -370,10 +481,11 @@ async def run_benchmark(
     run_id: str,
     tracer: trace.Tracer | None = None,
     trace_log_path: Path | None = None,
+    metrics_log_path: Path | None = None,
 ) -> str | None:
     """Entry point used by asyncio.run."""
     ensure_env_vars()
-    app = build_plan_execute_app(config)
+    app = build_plan_execute_app(config, tracer=tracer)
     log_path = LOG_DIR / f"run_{run_id}.jsonl"
     metadata_path = LOG_DIR / f"run_{run_id}.metadata.json"
     status = "unknown"
@@ -399,6 +511,7 @@ async def run_benchmark(
             error=error_message,
             event_log=_relative_path(log_path),
             trace_log=_relative_path(trace_log_path) if trace_log_path else None,
+            metrics_log=_relative_path(metrics_log_path) if metrics_log_path else None,
         )
 
 
@@ -418,12 +531,12 @@ def parse_args(argv: List[str] | None = None) -> BenchmarkConfig:
     )
     parser.add_argument(
         "--planner-model",
-        default="gpt-4o",
+        default="gpt-5-mini",
         help="Model that proposes the initial plan.",
     )
     parser.add_argument(
         "--replanner-model",
-        default="gpt-4o",
+        default="gpt-5-mini",
         help="Model that evaluates progress and decides to replan or respond.",
     )
     parser.add_argument(
@@ -454,6 +567,15 @@ def parse_args(argv: List[str] | None = None) -> BenchmarkConfig:
         action="store_true",
         help="Silence per-node summaries (logs are still written under logs/).",
     )
+    parser.add_argument(
+        "--metrics-interval",
+        type=float,
+        default=DEFAULT_METRICS_INTERVAL,
+        help=(
+            "Seconds between psutil samples for system metrics "
+            f"(default {DEFAULT_METRICS_INTERVAL}, override via PLAN_EXECUTE_METRICS_INTERVAL_SECONDS)."
+        ),
+    )
     args = parser.parse_args(argv)
     return BenchmarkConfig(
         question=args.question,
@@ -465,6 +587,7 @@ def parse_args(argv: List[str] | None = None) -> BenchmarkConfig:
         max_search_results=args.max_search_results,
         agent_temperature=args.agent_temperature,
         verbose=not args.quiet,
+        metrics_interval=max(1.0, args.metrics_interval),
     )
 
 
@@ -474,8 +597,17 @@ def main():
     tracer = None
     trace_log_path = None
     provider = None
+    metrics_recorder: Optional[PsutilMetricsRecorder] = None
+    metrics_log_path: Optional[Path] = None
     try:
-        tracer, trace_log_path, provider = setup_tracer(run_id)
+        tracer, trace_log_path, provider = setup_jsonl_tracing(
+            app_name=APP_NAME,
+            service_name=TRACE_SERVICE_NAME,
+            service_version=TRACE_SERVICE_VERSION,
+            log_dir=LOG_DIR,
+            run_id=run_id,
+            environment=DEFAULT_ENVIRONMENT,
+        )
         LOGGER.info("OpenTelemetry trace log: %s", trace_log_path)
     except Exception as exc:  # pragma: no cover - tracing is optional
         LOGGER.warning("Unable to initialize OpenTelemetry tracing: %s", exc)
@@ -483,8 +615,32 @@ def main():
         trace_log_path = None
         provider = None
     try:
+        metrics_recorder = PsutilMetricsRecorder(
+            service_name=TRACE_SERVICE_NAME,
+            service_version=TRACE_SERVICE_VERSION,
+            run_id=run_id,
+            output_dir=METRICS_DIR,
+            environment=DEFAULT_ENVIRONMENT,
+            scope=f"{APP_NAME}.system-metrics",
+            interval_seconds=max(1.0, config.metrics_interval),
+            logger=LOGGER,
+        )
+        metrics_log_path = metrics_recorder.output_path
+        metrics_recorder.start()
+        LOGGER.info("System metrics log: %s", metrics_log_path)
+    except Exception as exc:  # pragma: no cover - metrics optional
+        LOGGER.warning("Unable to initialize system metrics recorder: %s", exc)
+        metrics_recorder = None
+        metrics_log_path = None
+    try:
         final_answer = asyncio.run(
-            run_benchmark(config, run_id, tracer=tracer, trace_log_path=trace_log_path)
+            run_benchmark(
+                config,
+                run_id,
+                tracer=tracer,
+                trace_log_path=trace_log_path,
+                metrics_log_path=metrics_log_path,
+            )
         )
     except KeyboardInterrupt:
         LOGGER.warning("Benchmark interrupted by user.")
@@ -497,6 +653,8 @@ def main():
         else:
             LOGGER.info("Benchmark finished but no response was produced.")
     finally:
+        if metrics_recorder:
+            metrics_recorder.stop()
         if provider:
             provider.shutdown()
 

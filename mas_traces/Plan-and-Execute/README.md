@@ -4,9 +4,9 @@ This directory turns the original `Plan-and-Execute.ipynb` notebook into a runna
 
 1. `ChatOpenAI` for the planner, executor, and re-planner roles
 2. `TavilySearchResults` as the external search tool surfaced to the agent
-3. The LangGraph compiler to orchestrate planner, executor, and re-planner nodes with optional OpenTelemetry spans emitted per run.
+3. The LangGraph compiler to orchestrate planner, executor, and re-planner nodes with OpenTelemetry spans + psutil metrics emitted via the shared `mas_traces.langgraph_otel` helpers.
 
-Every CLI run writes node-by-node logs under `logs/` (JSONL) together with a `.metadata.json` sidecar that captures the question, model choices, recursion limit, and success/failure status so benchmark runs can be replayed or diffed later.
+Every CLI run writes node-by-node logs under `logs/`, a matching `.metadata.json`, structured OTEL spans, and psutil-derived system metrics (`metrics/`) so you can diff behavior exactly like the ToT and LATS benchmarks.
 
 ```
 ┌────────────┐      ┌──────────────┐      ┌──────────────┐
@@ -49,8 +49,10 @@ Useful flags:
 | `--planner-model` / `--replanner-model` | Models that craft/refresh the plan (default: `gpt-4o`) |
 | `--max-search-results` | Controls Tavily's breadth per tool call (default: `3`) |
 | `--recursion-limit` | LangGraph recursion limit to constrain re-planning loops (default: `50`) |
+| `--agent-temperature` | Sampling temperature for the executor (`0` by default) |
 | `--prompt` | System prompt for the executor |
 | `--quiet` | Skip console summaries—useful when running via `run_benchmarks.py` |
+| `--metrics-interval` | Seconds between psutil samples for `metrics/*.metrics.jsonl` (default `15`) |
 
 A sample console transcript is available in `sample_output.md`.
 
@@ -58,7 +60,8 @@ A sample console transcript is available in `sample_output.md`.
 
 ```
 mas_traces/Plan-and-Execute
-├── logs/                    # JSONL traces + metadata (gitignored via .gitkeep)
+├── logs/                    # JSONL event logs + metadata (gitignored)
+├── metrics/                 # psutil CPU/RSS snapshots (gitignored)
 ├── main.py                  # CLI wrapper around the LangGraph workflow
 ├── plan-and-execute.ipynb   # Original reference notebook
 ├── README.md                # You are here
@@ -66,9 +69,10 @@ mas_traces/Plan-and-Execute
 └── sample_output.md         # Captured run to verify expectations
 ```
 
-- `logs/run_YYYYMMDD_HHMMSS.otel.jsonl` – OpenTelemetry spans for the run (suppressed if OTEL init fails)
+- `logs/run_YYYYMMDD_HHMMSS.otel.jsonl` – OpenTelemetry spans that follow `otel_template/otel_span_template.json`
 - `logs/run_YYYYMMDD_HHMMSS.jsonl` – ordered LangGraph node emissions
 - `logs/run_YYYYMMDD_HHMMSS.metadata.json` – CLI arguments, env presence, and pointers to the event/trace artefacts
+- `metrics/plan-and-execute_YYYYMMDD_HHMMSS.metrics.jsonl` – psutil CPU/RSS snapshots that match `otel_template/otel_metrics_template.json`
 
 ## 4. Integrating with other harnesses
 
