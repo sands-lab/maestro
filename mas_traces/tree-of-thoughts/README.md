@@ -37,7 +37,7 @@ python main.py \
   --max-tokens 1024
 ```
 
-Each run writes `logs/run_<timestamp>.log` (console-style step trace), `run_<timestamp>.otel.jsonl` (OpenTelemetry spans), plus a matching `run_<timestamp>.metadata.json` with the arguments, dataset source, and puzzle-level outcomes. You can also invoke this bench via the shared runner: `python ../run_benchmarks.py --benchmark tree_of_thoughts`.
+Each run writes `logs/run_<timestamp>.log` (console-style step trace), `run_<timestamp>.otel.jsonl` (OpenTelemetry spans), a matching `run_<timestamp>.metadata.json` with the arguments/dataset/outcomes, and `metrics/tree-of-thoughts_<timestamp>.metrics.jsonl` (psutil CPU/RSS snapshots that follow `otel_template/otel_metrics_template.json`). You can also invoke this bench via the shared runner: `python ../run_benchmarks.py --benchmark tree_of_thoughts`.
 
 ### CLI flags
 
@@ -54,6 +54,7 @@ Each run writes `logs/run_<timestamp>.log` (console-style step trace), `run_<tim
 | `--dataset-file` | Optional local CSV with a `puzzle` column. Defaults to `data/game_of_24_sample.csv`. |
 | `--dataset-url` | Remote CSV URL fallback if no local dataset is provided. |
 | `--max-tokens` | Upper bound on tokens returned by the LLM per expansion (default `1024`). |
+| `--metrics-interval` | Seconds between psutil samples for system metrics (default `15`, override via `TOT_METRICS_INTERVAL_SECONDS`). |
 
 ## Dataset options
 

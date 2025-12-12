@@ -10,6 +10,7 @@ import operator
 import os
 import sys
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from io import StringIO
@@ -17,7 +18,6 @@ from pathlib import Path
 from typing import Dict, List, Literal, NamedTuple, Optional, Sequence, Union
 
 import requests
-from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import InMemorySaver
@@ -25,21 +25,22 @@ from langgraph.graph import StateGraph
 from langgraph.runtime import Runtime
 from langgraph.types import Send
 from opentelemetry import trace
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (
-    SimpleSpanProcessor,
-    SpanExporter,
-    SpanExportResult,
-)
-from opentelemetry.trace import Status, StatusCode, SpanKind
-from opentelemetry.version import __version__ as otel_sdk_version
-try:
-    import psutil  # type: ignore
-except Exception:  # pragma: no cover - psutil may be unavailable
-    psutil = None
+from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated, TypedDict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from mas_traces.langgraph_otel import (
+    DEFAULT_ENVIRONMENT,
+    PsutilMetricsRecorder,
+    invoke_agent_span,
+    record_invoke_agent_output,
+    run_llm_with_span,
+    setup_jsonl_tracing,
+)
 
 APP_NAME = "tree_of_thoughts"
 BENCHMARK_ROOT = Path(__file__).resolve().parent
@@ -48,177 +49,18 @@ DEFAULT_DATASET_URL = (
     "https://storage.googleapis.com/benchmarks-artifacts/game-of-24/24.csv"
 )
 LOG_DIR = BENCHMARK_ROOT / "logs"
+METRICS_DIR = BENCHMARK_ROOT / "metrics"
 METADATA_VERSION = 1
 TRACE_SERVICE_NAME = "tree-of-thoughts-benchmark"
 TRACE_SERVICE_VERSION = "1.0.0"
-DEFAULT_ENVIRONMENT = os.getenv("DEPLOYMENT_ENVIRONMENT", "local")
-
-GEN_AI_METRIC_DEFAULTS: Dict[str, int] = {
-    "gen_ai.usage.input_tokens": 0,
-    "gen_ai.usage.output_tokens": 0,
-    "gen_ai.usage.total_tokens": 0,
-    "gen_ai.llm.call.count": 0,
-    "gen_ai.mcp.call.count": 0,
-}
-
-COMM_METRIC_DEFAULTS: Dict[str, object] = {
-    "communication.is_in_process_call": False,
-    "communication.input_message_size_bytes": 0,
-    "communication.output_message_size_bytes": 0,
-    "communication.total_message_size_bytes": 0,
-}
-
-
-def _ensure_gen_ai_metrics(attributes: Dict[str, object]) -> None:
-    for key, default in GEN_AI_METRIC_DEFAULTS.items():
-        attributes.setdefault(key, default)
-
-
-def _ensure_comm_metrics(attributes: Dict[str, object]) -> None:
-    for key, default in COMM_METRIC_DEFAULTS.items():
-        attributes.setdefault(key, default)
-
-
-def _collect_system_metrics() -> Dict[str, object]:
-    metrics: Dict[str, object] = {
-        "system.cpu.percent": 0.0,
-        "process.cpu.percent": 0.0,
-        "system.memory.usage_bytes": 0,
-        "process.memory.rss_bytes": 0,
-    }
-    if psutil is None:
-        return metrics
-    try:
-        metrics["system.cpu.percent"] = float(psutil.cpu_percent(interval=None))
-    except Exception:  # pragma: no cover - best effort
-        pass
-    try:
-        process = psutil.Process()
-        metrics["process.cpu.percent"] = float(process.cpu_percent(interval=None))
-        metrics["process.memory.rss_bytes"] = int(process.memory_info().rss)
-    except Exception:
-        pass
-    try:
-        vm = psutil.virtual_memory()
-        metrics["system.memory.usage_bytes"] = int(vm.used)
-    except Exception:
-        pass
-    return metrics
-
-
-def _normalize_token_usage(usage: Optional[Dict[str, int]]) -> tuple[int, int, int]:
-    if not usage:
-        return 0, 0, 0
-    prompt = (
-        usage.get("prompt_tokens")
-        or usage.get("prompt_token_count")
-        or usage.get("input_tokens")
-        or 0
-    )
-    completion = (
-        usage.get("completion_tokens")
-        or usage.get("candidates_token_count")
-        or usage.get("output_tokens")
-        or 0
-    )
-    total = usage.get("total_tokens") or usage.get("total_token_count") or (prompt + completion)
-    return int(prompt), int(completion), int(total)
+DEFAULT_METRICS_INTERVAL = float(os.getenv("TOT_METRICS_INTERVAL_SECONDS", "15") or 15.0)
+GEN_AI_SYSTEM = "openai"
 
 logger = logging.getLogger("tree-of-thoughts-benchmark")
 
 
 OperatorType = Literal["+", "-", "*", "/"]
 TokenType = Union[float, OperatorType]
-
-
-class FileSpanExporter(SpanExporter):
-    """Writes OpenTelemetry spans that match the shared template."""
-
-    def __init__(self, file_path: Path, resource_attributes: Dict[str, object]) -> None:
-        self.file_path = file_path
-        self.resource_attributes = resource_attributes
-
-    def export(self, spans) -> SpanExportResult:
-        lines: List[str] = []
-        for span in spans:
-            context = span.context
-            parent_context = span.parent
-            parent_id: str | None = None
-            if parent_context and getattr(parent_context, "span_id", 0):
-                parent_id = format(parent_context.span_id, "016x")
-            attributes = dict(span.attributes)
-            agent_name = attributes.pop("agent.name", None)
-            if not agent_name:
-                agent_name = attributes.get("gen_ai.agent.name") or APP_NAME
-            communication: Dict[str, object] = {}
-            for key in list(attributes.keys()):
-                if key.startswith("communication."):
-                    _, sub_key = key.split(".", 1)
-                    communication[sub_key] = attributes.pop(key)
-            record: Dict[str, object] = {
-                "trace_id": format(context.trace_id, "032x"),
-                "span_id": format(context.span_id, "016x"),
-            }
-            if parent_id:
-                record["parent_span_id"] = parent_id
-            record.update(
-                {
-                    "name": span.name,
-                    "agent_name": agent_name,
-                    "start_time": span.start_time,
-                    "end_time": span.end_time,
-                    "duration_ns": span.end_time - span.start_time,
-                    "status": {
-                        "status_code": span.status.status_code.name,
-                        "description": span.status.description,
-                    },
-                    "attributes": attributes,
-                    "resource": {"attributes": self.resource_attributes},
-                }
-            )
-            if communication:
-                record["communication"] = communication
-            events_payload: List[Dict[str, object]] = []
-            for event in span.events:
-                events_payload.append(
-                    {
-                        "name": event.name,
-                        "timestamp": event.timestamp,
-                        "attributes": dict(event.attributes or {}),
-                    }
-                )
-            if events_payload:
-                record["events"] = events_payload
-            lines.append(json.dumps(record))
-        with self.file_path.open("a", encoding="utf-8") as handle:
-            handle.write("\n".join(lines) + "\n")
-        return SpanExportResult.SUCCESS
-
-    def shutdown(self) -> None:  # pragma: no cover - nothing to clean up
-        return None
-
-
-def setup_tracer() -> tuple[trace.Tracer, Path, TracerProvider, str]:
-    """Configure OpenTelemetry tracing and return the tracer, log path, and run id."""
-    LOG_DIR.mkdir(exist_ok=True)
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    trace_path = LOG_DIR / f"run_{timestamp}.otel.jsonl"
-    trace_path.touch(exist_ok=True)
-    resource_attributes = {
-        "service.name": TRACE_SERVICE_NAME,
-        "service.version": TRACE_SERVICE_VERSION,
-        "deployment.environment": DEFAULT_ENVIRONMENT,
-        "telemetry.sdk.name": "opentelemetry",
-        "telemetry.sdk.language": "python",
-        "telemetry.sdk.version": otel_sdk_version,
-    }
-    resource = Resource.create(resource_attributes)
-    provider = TracerProvider(resource=resource)
-    exporter = FileSpanExporter(trace_path, dict(resource.attributes))
-    provider.add_span_processor(SimpleSpanProcessor(exporter))
-    trace.set_tracer_provider(provider)
-    tracer = trace.get_tracer("tree-of-thoughts")
-    return tracer, trace_path, provider, timestamp
 
 
 class Equation(BaseModel):
@@ -281,26 +123,6 @@ class ScoredCandidate(Candidate):
     candidate: Equation
     score: float
     feedback: str
-
-
-class LLMTokenUsageCallback(BaseCallbackHandler):
-    """Capture token statistics for a single LangChain LLM call."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.token_usage: Dict[str, int] | None = None
-
-    def on_llm_end(self, response, **kwargs):  # type: ignore[override]
-        usage = None
-        llm_output = getattr(response, "llm_output", None)
-        if isinstance(llm_output, dict):
-            usage = llm_output.get("token_usage") or llm_output.get("usage")
-        if isinstance(usage, dict):
-            self.token_usage = {
-                key: int(value)
-                for key, value in usage.items()
-                if isinstance(value, (int, float))
-            }
 
 
 def _preview_candidates(
@@ -458,61 +280,74 @@ def _thread_id_from_runtime(runtime: Runtime[Context]) -> str | None:
     return None
 
 
-def build_graph(solver: object, tracer: trace.Tracer | None = None) -> StateGraph:
-    node_tracer = tracer or trace.get_tracer("tree-of-thoughts")
+def build_graph(
+    solver: object, tracer: trace.Tracer | None, model_name: str
+) -> StateGraph:
+    node_tracer = tracer or trace.get_tracer(APP_NAME)
 
-    def _span(name: str, attributes: Dict[str, object]):
-        _ensure_gen_ai_metrics(attributes)
-        _ensure_comm_metrics(attributes)
-        attributes.setdefault("agent.name", f"tree_of_thoughts.{name}")
-        attributes.update(_collect_system_metrics())
-        return node_tracer.start_as_current_span(
-            name,
-            attributes=attributes,
-            kind=SpanKind.INTERNAL,
-        )
     def expand(
         state: ExpansionState, *, runtime: Runtime[Context]
     ) -> Dict[str, List[Candidate]]:
         ctx = _ensure_context(runtime.context)
         seed = state.get("seed")
         candidate_str = "" if not seed else f"\n\n{seed}"
+        depth = int(state.get("depth") or 0)
         attributes: Dict[str, object] = {
             "tot.node": "expand",
             "tot.seed_present": bool(seed),
             "tot.branching_factor": ctx["k"],
-            "tot.depth": int(state.get("depth") or 0),
+            "tot.depth": depth,
         }
-        attributes["gen_ai.llm.call.count"] = 1
-        attributes["gen_ai.mcp.call.count"] = 0
         thread_id = _thread_id_from_runtime(runtime)
         if thread_id:
             attributes["tot.thread_id"] = thread_id
         if "problem" in state:
             attributes["tot.problem"] = state["problem"]
-        with _span("tot.expand", attributes) as span:
-            try:
-                token_tracker = LLMTokenUsageCallback()
-                equation_submission = solver.invoke(
+        payload_preview = {
+            "problem": state.get("problem"),
+            "depth": depth,
+            "seed": str(seed) if seed else None,
+        }
+        with invoke_agent_span(
+            node_tracer,
+            "tot.node.expand",
+            agent_name=f"{APP_NAME}.node.expand",
+            payload=payload_preview,
+            extra_attributes=attributes,
+        ) as (node_span, _):
+            def _invoke_solver(updated_config):
+                return solver.invoke(
                     {"problem": state["problem"], "candidate": candidate_str, "k": ctx["k"]},
-                    config={"callbacks": [token_tracker]},
+                    config=updated_config,
                 )
-            except Exception as exc:
+
+            try:
+                equation_submission = run_llm_with_span(
+                    node_tracer,
+                    "tot.call_llm.expand",
+                    agent_name=f"{APP_NAME}.llm",
+                    phase="expand",
+                    config=None,
+                    invoke_fn=_invoke_solver,
+                    extra_attributes={
+                        "tot.branching_factor": ctx["k"],
+                        "tot.depth": depth,
+                        "gen_ai.system": GEN_AI_SYSTEM,
+                        "gen_ai.request.model": model_name,
+                    },
+                )
+            except Exception as exc:  # run_llm_with_span already records on span
+                if node_span:
+                    node_span.record_exception(exc)
+                    node_span.set_status(Status(StatusCode.ERROR, str(exc)))
                 logger.warning("LLM expansion failed: %s", exc)
-                span.record_exception(exc)
-                span.set_status(Status(StatusCode.ERROR, str(exc)))
                 return {"candidates": []}
             new_candidates = [
                 Candidate(candidate=equation) for equation in equation_submission.equations
             ]
-            span.set_attribute("tot.generated_candidates", len(new_candidates))
-            span.set_attribute("tot.candidate_preview", _preview_candidates(new_candidates))
-            prompt_tokens, completion_tokens, total_tokens = _normalize_token_usage(
-                getattr(token_tracker, "token_usage", None)
-            )
-            span.set_attribute("gen_ai.usage.input_tokens", prompt_tokens)
-            span.set_attribute("gen_ai.usage.output_tokens", completion_tokens)
-            span.set_attribute("gen_ai.usage.total_tokens", total_tokens)
+            if node_span:
+                node_span.set_attribute("tot.generated_candidates", len(new_candidates))
+                node_span.set_attribute("tot.candidate_preview", _preview_candidates(new_candidates))
             return {"candidates": new_candidates}
 
     def score(state: ToTState) -> Dict[str, object]:
@@ -521,16 +356,26 @@ def build_graph(solver: object, tracer: trace.Tracer | None = None) -> StateGrap
             "tot.node": "score",
             "tot.candidate_count": len(candidates),
         }
-        attributes["gen_ai.mcp.call.count"] = 0
         if "problem" in state:
             attributes["tot.problem"] = state["problem"]
-        with _span("tot.score", attributes) as span:
+        payload_preview = {
+            "problem": state.get("problem"),
+            "candidate_count": len(candidates),
+        }
+        with invoke_agent_span(
+            node_tracer,
+            "tot.node.score",
+            agent_name=f"{APP_NAME}.node.score",
+            payload=payload_preview,
+            extra_attributes=attributes,
+        ) as (span, _):
             scored = [compute_score(state["problem"], candidate) for candidate in candidates]
             best = max((candidate.score or 0.0 for candidate in scored), default=0.0)
-            span.set_attribute("tot.best_candidate_score", best)
-            if scored:
-                span.set_attribute("tot.scored_preview", _preview_candidates(scored))
-            span.set_status(Status(StatusCode.OK))
+            if span:
+                span.set_attribute("tot.best_candidate_score", best)
+                if scored:
+                    span.set_attribute("tot.scored_preview", _preview_candidates(scored))
+                span.set_status(Status(StatusCode.OK))
             return {"scored_candidates": scored, "candidates": "clear"}
 
     def prune(state: ToTState, *, runtime: Runtime[Context]) -> Dict[str, object]:
@@ -546,14 +391,25 @@ def build_graph(solver: object, tracer: trace.Tracer | None = None) -> StateGrap
             "tot.beam_size": beam_size,
             "tot.depth": depth,
         }
-        attributes["gen_ai.mcp.call.count"] = 0
         thread_id = _thread_id_from_runtime(runtime)
         if thread_id:
             attributes["tot.thread_id"] = thread_id
-        with _span("tot.prune", attributes) as span:
-            if pruned:
-                span.set_attribute("tot.candidate_preview", _preview_candidates(pruned))
-            span.set_status(Status(StatusCode.OK))
+        payload_preview = {
+            "depth": depth,
+            "beam_size": beam_size,
+            "pruned_count": len(pruned),
+        }
+        with invoke_agent_span(
+            node_tracer,
+            "tot.node.prune",
+            agent_name=f"{APP_NAME}.node.prune",
+            payload=payload_preview,
+            extra_attributes=attributes,
+        ) as (span, _):
+            if span:
+                if pruned:
+                    span.set_attribute("tot.candidate_preview", _preview_candidates(pruned))
+                span.set_status(Status(StatusCode.OK))
             return {
                 "candidates": pruned,
                 "scored_candidates": "clear",
@@ -681,7 +537,7 @@ def run_problem(
     puzzle: str,
     index: int,
     ctx: EnsuredContext,
-    tracer: trace.Tracer,
+    tracer: trace.Tracer | None,
 ) -> RunResult:
     thread_id = f"tot_{index}_{int(time.time() * 1000)}"
     events: List[str] = []
@@ -690,15 +546,19 @@ def run_problem(
         "tot.puzzle": puzzle,
         "tot.thread_id": thread_id,
     }
-    _ensure_gen_ai_metrics(span_attributes)
-    _ensure_comm_metrics(span_attributes)
-    span_attributes.setdefault("agent.name", "tree_of_thoughts.problem")
-    span_attributes.update(_collect_system_metrics())
-    with tracer.start_as_current_span(
-        "tot.problem",
-        attributes=span_attributes,
-        kind=SpanKind.INTERNAL,
-    ) as span:
+    span_context = (
+        invoke_agent_span(
+            tracer,
+            "tot.problem",
+            agent_name=f"{APP_NAME}.problem",
+            payload=puzzle,
+            in_process_call=True,
+            extra_attributes=span_attributes,
+        )
+        if tracer
+        else nullcontext((None, 0))
+    )
+    with span_context as (span, puzzle_input_bytes):
         start = time.perf_counter()
         try:
             for event in graph.stream(
@@ -709,12 +569,14 @@ def run_problem(
                 summary = _summarize_event(event)
                 events.append(summary)
                 print(f"  {summary}", flush=True)
-                span.add_event("tot.graph_event", {"tot.summary": summary})
+                if span:
+                    span.add_event("tot.graph_event", {"tot.summary": summary})
         except Exception as exc:
             duration = time.perf_counter() - start
             logger.error("Graph execution failed for puzzle %s: %s", index, exc)
-            span.record_exception(exc)
-            span.set_status(Status(StatusCode.ERROR, str(exc)))
+            if span:
+                span.record_exception(exc)
+                span.set_status(Status(StatusCode.ERROR, str(exc)))
             return RunResult(
                 index=index,
                 puzzle=puzzle,
@@ -737,10 +599,11 @@ def run_problem(
         candidates: List[ScoredCandidate] = values.get("candidates") or []
         if not candidates:
             events.append("No candidates survived pruning.")
-            span.set_attribute("tot.best_score", 0.0)
-            span.set_attribute("tot.depth", depth)
-            span.set_attribute("tot.solved", False)
-            span.set_attribute("tot.duration_seconds", duration)
+            if span:
+                span.set_attribute("tot.best_score", 0.0)
+                span.set_attribute("tot.depth", depth)
+                span.set_attribute("tot.solved", False)
+                span.set_attribute("tot.duration_seconds", duration)
             return RunResult(
                 index=index,
                 puzzle=puzzle,
@@ -760,12 +623,15 @@ def run_problem(
         events.append(
             f"Final depth={depth}, best_score={best_score:.3f}, equation={equation}"
         )
-        span.set_attribute("tot.best_score", best_score)
-        span.set_attribute("tot.depth", depth)
-        span.set_attribute("tot.solved", solved)
-        span.set_attribute("tot.duration_seconds", duration)
-        if solved:
-            span.set_status(Status(StatusCode.OK))
+        if span:
+            span.set_attribute("tot.best_score", best_score)
+            span.set_attribute("tot.depth", depth)
+            span.set_attribute("tot.solved", solved)
+            span.set_attribute("tot.duration_seconds", duration)
+            if solved:
+                span.set_status(Status(StatusCode.OK))
+            if equation is not None:
+                record_invoke_agent_output(span, equation, puzzle_input_bytes)
         return RunResult(
             index=index,
             puzzle=puzzle,
@@ -785,7 +651,8 @@ def write_run_artifacts(
     args: argparse.Namespace,
     dataset_source: str,
     run_id: str,
-    trace_log_path: Path,
+    trace_log_path: Optional[Path],
+    metrics_log_path: Optional[Path],
     status: str,
 ) -> None:
     LOG_DIR.mkdir(exist_ok=True)
@@ -801,11 +668,7 @@ def write_run_artifacts(
             )
             for event in result.stream_events:
                 handle.write(f"  {event}\n")
-    try:
-        rel_trace = os.path.relpath(trace_log_path, start=BENCHMARK_ROOT)
-    except ValueError:
-        rel_trace = str(trace_log_path)
-    metadata = {
+    metadata: Dict[str, object] = {
         "metadata_version": METADATA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "run_id": run_id,
@@ -817,9 +680,20 @@ def write_run_artifacts(
         "temperature": args.temperature,
         "search_context": ctx,
         "status": status,
-        "trace_log": rel_trace,
         "problems": [result.to_metadata() for result in results],
     }
+    if trace_log_path:
+        try:
+            rel_trace = os.path.relpath(trace_log_path, start=BENCHMARK_ROOT)
+        except ValueError:
+            rel_trace = str(trace_log_path)
+        metadata["trace_log"] = rel_trace
+    if metrics_log_path:
+        try:
+            rel_metrics = os.path.relpath(metrics_log_path, start=BENCHMARK_ROOT)
+        except ValueError:
+            rel_metrics = str(metrics_log_path)
+        metadata["metrics_log"] = rel_metrics
     metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     logger.info("Wrote %s and %s", log_path.name, metadata_path.name)
 
@@ -891,6 +765,15 @@ def parse_args() -> argparse.Namespace:
         default=1024,
         help="Maximum tokens permitted in each model response (forwarded as OpenAI max_tokens).",
     )
+    parser.add_argument(
+        "--metrics-interval",
+        type=float,
+        default=DEFAULT_METRICS_INTERVAL,
+        help=(
+            "Seconds between psutil samples for system metrics "
+            f"(default {DEFAULT_METRICS_INTERVAL}, override via TOT_METRICS_INTERVAL_SECONDS)."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -913,9 +796,47 @@ def main() -> None:
     if not os.getenv("OPENAI_API_KEY"):
         raise EnvironmentError("OPENAI_API_KEY environment variable is not set.")
 
-    tracer, trace_log_path, provider, run_id = setup_tracer()
+    run_id = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    tracer: Optional[trace.Tracer] = None
+    trace_log_path: Optional[Path] = None
+    provider = None
+    metrics_recorder: Optional[PsutilMetricsRecorder] = None
+    metrics_log_path: Optional[Path] = None
+    try:
+        tracer, trace_log_path, provider = setup_jsonl_tracing(
+            app_name=APP_NAME,
+            service_name=TRACE_SERVICE_NAME,
+            service_version=TRACE_SERVICE_VERSION,
+            log_dir=LOG_DIR,
+            run_id=run_id,
+            environment=DEFAULT_ENVIRONMENT,
+        )
+        logger.info("OpenTelemetry trace log: %s", trace_log_path)
+    except Exception as exc:  # pragma: no cover - tracing optional
+        logger.warning("Unable to initialize OpenTelemetry tracing: %s", exc)
+        tracer = None
+        trace_log_path = None
+        provider = None
+    try:
+        metrics_recorder = PsutilMetricsRecorder(
+            service_name=TRACE_SERVICE_NAME,
+            service_version=TRACE_SERVICE_VERSION,
+            run_id=run_id,
+            output_dir=METRICS_DIR,
+            environment=DEFAULT_ENVIRONMENT,
+            scope=f"{APP_NAME}.system-metrics",
+            interval_seconds=max(1.0, args.metrics_interval),
+            logger=logger,
+        )
+        metrics_log_path = metrics_recorder.output_path
+        metrics_recorder.start()
+        logger.info("System metrics log: %s", metrics_log_path)
+    except Exception as exc:  # pragma: no cover - metrics optional
+        logger.warning("Unable to initialize system metrics recorder: %s", exc)
+        metrics_recorder = None
+        metrics_log_path = None
     solver = build_solver(args.model, args.temperature, args.max_tokens)
-    graph = build_graph(solver, tracer=tracer)
+    graph = build_graph(solver, tracer=tracer, model_name=args.model)
     search_ctx: EnsuredContext = {
         "max_depth": args.max_depth,
         "threshold": args.score_threshold,
@@ -942,15 +863,24 @@ def main() -> None:
             "tot.requested_puzzles": args.num_puzzles,
             "tot.dataset_source": dataset_source,
         }
-        _ensure_gen_ai_metrics(run_attributes)
-        _ensure_comm_metrics(run_attributes)
-        run_attributes.setdefault("agent.name", "tree_of_thoughts.run")
-        run_attributes.update(_collect_system_metrics())
-        with tracer.start_as_current_span(
-            "tot.run",
-            attributes=run_attributes,
-            kind=SpanKind.INTERNAL,
-        ) as run_span:
+        run_payload = {
+            "problem_index": args.problem_index,
+            "num_puzzles": args.num_puzzles,
+            "dataset_source": dataset_source,
+        }
+        run_span_cm = (
+            invoke_agent_span(
+                tracer,
+                "tot.run",
+                agent_name=f"{APP_NAME}.run",
+                payload=run_payload,
+                in_process_call=True,
+                extra_attributes=run_attributes,
+            )
+            if tracer
+            else nullcontext((None, 0))
+        )
+        with run_span_cm as (run_span, _):
             for index, puzzle in slice_with_indexes:
                 logger.info("Puzzle %s -> %s", index, puzzle)
                 result = run_problem(graph, puzzle, index, search_ctx, tracer)
@@ -964,17 +894,21 @@ def main() -> None:
                 )
                 results.append(result)
             run_status = _determine_run_status(results)
-            run_span.set_attribute("tot.status", run_status)
-            run_span.set_attribute("tot.total_runs", len(results))
-            run_span.set_attribute(
-                "tot.solved_runs", sum(1 for result in results if result.solved)
-            )
-            if run_status == "ok":
-                run_span.set_status(Status(StatusCode.OK))
-            elif run_status == "error":
-                run_span.set_status(Status(StatusCode.ERROR, run_status))
+            if run_span:
+                run_span.set_attribute("tot.status", run_status)
+                run_span.set_attribute("tot.total_runs", len(results))
+                run_span.set_attribute(
+                    "tot.solved_runs", sum(1 for result in results if result.solved)
+                )
+                if run_status == "ok":
+                    run_span.set_status(Status(StatusCode.OK))
+                elif run_status == "error":
+                    run_span.set_status(Status(StatusCode.ERROR, run_status))
     finally:
-        provider.shutdown()
+        if metrics_recorder:
+            metrics_recorder.stop()
+        if provider:
+            provider.shutdown()
 
     write_run_artifacts(
         results,
@@ -983,6 +917,7 @@ def main() -> None:
         dataset_source,
         run_id,
         trace_log_path,
+        metrics_log_path,
         run_status,
     )
 
