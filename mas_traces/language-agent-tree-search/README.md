@@ -46,6 +46,15 @@ Each run now writes:
 
 The span + metrics files are produced via the shared `mas_traces.langgraph_otel` helpers so they can be reused across other LangGraph examples. You can also invoke this benchmark via the shared runner: `python ../run_benchmarks.py --benchmark language_agent_tree_search`.
 Each span includes accumulated `gen_ai.usage.*` counters and message byte sizes captured through LangChain callbacks.
+We also tag each span’s `gen_ai.operation.name` so dashboards can distinguish between `call_llm`, `execute_tool`, and `invoke_agent` operations outlined in `otel_span_template.json`.
+
+### OTEL instrumentation quick reference
+
+- `mas_traces/langgraph_otel.py` exports `run_llm_with_span` and `run_tool_with_span`; always wrap LangChain LLM calls with the former and Tavily/MCP/tool payloads with the latter so `gen_ai.operation.name` is correctly set to `call_llm` or `execute_tool`.
+- The helpers automatically attach a `LangChainUsageCallback`, aggregate token counts, and populate `communication.input/output/total_message_size_bytes` so you never have to wire those attributes manually in `main.py`.
+- Use `invoke_agent_span` for question/node orchestration spans (`gen_ai.operation.name=invoke_agent`) and call `record_invoke_agent_output(span, result, input_bytes)` once the agent produces an answer; both helpers live in `mas_traces.langgraph_otel` so other LangGraph apps can stay minimal.
+- For bespoke steps that don’t fit the helpers, fall back to `estimate_message_bytes(value)` to keep `communication.*` metrics aligned with the template.
+- When you add a brand new operation, document whether it maps to `call_llm`, `execute_tool`, or `invoke_agent` and ensure the payload that hits the external system (LLM prompt, MCP request, tool args) is what you feed into the message-size helper; downstream analysis relies on these values being comparable across applications.
 
 ### CLI flags
 

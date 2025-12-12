@@ -43,7 +43,11 @@ from mas_traces.langgraph_otel import (
     DEFAULT_ENVIRONMENT,
     LangChainUsageCallback,
     PsutilMetricsRecorder,
+    invoke_agent_span,
+    record_invoke_agent_output,
     record_usage_on_span,
+    run_llm_with_span,
+    run_tool_with_span,
     setup_jsonl_tracing,
 )
 
@@ -59,6 +63,7 @@ TRACE_SERVICE_NAME = "language-agent-tree-search"
 TRACE_SERVICE_VERSION = "1.0.0"
 METRICS_DIR = BENCHMARK_ROOT / "metrics"
 DEFAULT_METRICS_INTERVAL = float(os.getenv("LATS_METRICS_INTERVAL_SECONDS", "15") or 15.0)
+GEN_AI_SYSTEM = "openai"
 
 
 class Reflection(BaseModel):
@@ -256,6 +261,14 @@ def build_graph(
     tavily_tool = TavilySearchResults(api_wrapper=search, max_results=tavily_max_results)
     tool_node = ToolNode(tools=[tavily_tool])
     tools = [tavily_tool]
+    component_tracer = trace.get_tracer(APP_NAME)
+
+    def _invoke_tavily(payload, invoke_config):
+        """Forward LangGraph config into Tavily tool node for OTEL spans."""
+
+        return tool_node.invoke(payload, config=invoke_config)
+    # Follow otel_span_template guidance: gen_ai.operation.name identifies call_llm,
+    # execute_tool, or invoke_agent for every span we emit.
 
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -294,28 +307,71 @@ def build_graph(
     parser = JsonOutputToolsParser(return_id=True)
 
     def generate_initial_response(state: TreeState, config: RunnableConfig) -> Dict[str, object]:
-        res = initial_answer_chain.invoke({"input": state["input"]}, config=config)
-        parsed = parser.invoke(res)
-        tool_responses = [
-            tool_node.invoke(
-                {
-                    "messages": [
-                        AIMessage(
-                            content="",
-                            tool_calls=[
-                                {"name": r["type"], "args": r["args"], "id": r["id"]}
-                            ],
-                        )
-                    ]
-                },
-                config=config,
-            )
-            for r in parsed
-        ]
-        output_messages = [res] + [tr["messages"][0] for tr in tool_responses]
-        reflection = reflection_chain.invoke(
-            {"input": state["input"], "candidate": output_messages},
+        def _invoke_initial(updated_config: RunnableConfig | None):
+            return initial_answer_chain.invoke({"input": state["input"]}, config=updated_config)
+
+        res = run_llm_with_span(
+            component_tracer,
+            "lats.call_llm.initial_response",
+            agent_name=f"{APP_NAME}.llm",
+            phase="initial_response",
             config=config,
+            invoke_fn=_invoke_initial,
+            extra_attributes={
+                "lats.phase": "initial_response",
+                "gen_ai.system": GEN_AI_SYSTEM,
+                "gen_ai.request.model": model,
+            },
+        )
+        parsed = parser.invoke(res)
+
+        tool_messages: List[dict] = []
+        for r in parsed:
+            tool_payload = {
+                "messages": [
+                    AIMessage(
+                        content="",
+                        tool_calls=[
+                            {"name": r["type"], "args": r["args"], "id": r["id"]}
+                        ],
+                    )
+                ]
+            }
+            result = run_tool_with_span(
+                component_tracer,
+                "lats.execute_tool.tavily",
+                agent_name=f"{APP_NAME}.tool.tavily",
+                tool_name="tavily_search",
+                payload=tool_payload,
+                invoke_fn=_invoke_tavily,
+                config=config,
+                extra_attributes={
+                    "gen_ai.tool.name": "tavily_search",
+                    "gen_ai.tool.type": "FunctionTool",
+                    "gen_ai.system": "tavily",
+                },
+            )
+            tool_messages.append(result)
+
+        output_messages = [res] + [tr["messages"][0] for tr in tool_messages]
+        def _invoke_reflection(updated_config: RunnableConfig | None):
+            return reflection_chain.invoke(
+                {"input": state["input"], "candidate": output_messages},
+                config=updated_config,
+            )
+
+        reflection = run_llm_with_span(
+            component_tracer,
+            "lats.call_llm.reflection",
+            agent_name=f"{APP_NAME}.llm",
+            phase="reflection",
+            config=config,
+            invoke_fn=_invoke_reflection,
+            extra_attributes={
+                "lats.phase": "reflection",
+                "gen_ai.system": GEN_AI_SYSTEM,
+                "gen_ai.request.model": model,
+            },
         )
         return {
             **state,
@@ -323,14 +379,31 @@ def build_graph(
         }
 
     def generate_candidates(messages: ChatPromptValue, config: RunnableConfig):
-        n = config.get("configurable", {}).get("N", 5)
         bound_kwargs = llm.bind_tools(tools=tools).kwargs
-        chat_result = llm.generate(
-            [messages.to_messages()],
-            n=n,
-            callbacks=config.get("callbacks"),
-            run_name="GenerateCandidates",
-            **bound_kwargs,
+
+        def _invoke_expand(updated_config: RunnableConfig | None):
+            callbacks = (updated_config or {}).get("callbacks")
+            n_value = (updated_config or {}).get("configurable", {}).get("N", 5)
+            return llm.generate(
+                [messages.to_messages()],
+                n=n_value,
+                callbacks=callbacks,
+                run_name="GenerateCandidates",
+                **bound_kwargs,
+            )
+
+        chat_result = run_llm_with_span(
+            component_tracer,
+            "lats.call_llm.expand",
+            agent_name=f"{APP_NAME}.llm",
+            phase="expand",
+            config=config,
+            invoke_fn=_invoke_expand,
+            extra_attributes={
+                "lats.phase": "expand",
+                "gen_ai.system": GEN_AI_SYSTEM,
+                "gen_ai.request.model": model,
+            },
         )
         return [gen.message for gen in chat_result.generations[0]]
 
@@ -350,29 +423,37 @@ def build_graph(
             for i, tool_calls in enumerate(parsed)
             for tool_call in tool_calls
         ]
-        tool_responses = [
-            (
-                i,
-                tool_node.invoke(
-                    {
-                        "messages": [
-                            AIMessage(
-                                content="",
-                                tool_calls=[
-                                    {
-                                        "name": tool_call["type"],
-                                        "args": tool_call["args"],
-                                        "id": tool_call["id"],
-                                    }
-                                ],
-                            )
-                        ]
-                    },
-                    config=config,
-                ),
+        tool_responses = []
+        for i, tool_call in flattened:
+            tool_payload = {
+                "messages": [
+                    AIMessage(
+                        content="",
+                        tool_calls=[
+                            {
+                                "name": tool_call["type"],
+                                "args": tool_call["args"],
+                                "id": tool_call["id"],
+                            }
+                        ],
+                    )
+                ]
+            }
+            result = run_tool_with_span(
+                component_tracer,
+                "lats.execute_tool.tavily",
+                agent_name=f"{APP_NAME}.tool.tavily",
+                tool_name="tavily_search",
+                payload=tool_payload,
+                invoke_fn=_invoke_tavily,
+                config=config,
+                extra_attributes={
+                    "gen_ai.tool.name": "tavily_search",
+                    "gen_ai.tool.type": "FunctionTool",
+                    "gen_ai.system": "tavily",
+                },
             )
-            for i, tool_call in flattened
-        ]
+            tool_responses.append((i, result))
         collected_responses: Dict[int, List[ToolMessage]] = defaultdict(list)
         for i, resp in tool_responses:
             collected_responses[i].append(resp["messages"][0])
@@ -380,9 +461,26 @@ def build_graph(
         for i, candidate in enumerate(new_candidates):
             output_messages.append([candidate] + collected_responses[i])
 
-        reflections = reflection_chain.batch(
-            [{"input": state["input"], "candidate": msgs} for msgs in output_messages],
-            config,
+        reflection_inputs = [
+            {"input": state["input"], "candidate": msgs} for msgs in output_messages
+        ]
+
+        def _invoke_reflection_batch(updated_config: RunnableConfig | None):
+            return reflection_chain.batch(reflection_inputs, updated_config)
+
+        reflections = run_llm_with_span(
+            component_tracer,
+            "lats.call_llm.reflection.batch",
+            agent_name=f"{APP_NAME}.llm",
+            phase="reflection",
+            config=config,
+            invoke_fn=_invoke_reflection_batch,
+            extra_attributes={
+                "lats.phase": "reflection",
+                "gen_ai.system": GEN_AI_SYSTEM,
+                "gen_ai.request.model": model,
+                "langgraph.batch_size": len(reflection_inputs),
+            },
         )
         child_nodes = [
             Node(messages, parent=best_candidate, reflection=reflection)
@@ -483,34 +581,42 @@ def run_question(
     start = time.perf_counter()
     root_node: Optional[Node] = None
     span_attrs = {
-        "agent.name": f"{APP_NAME}.question",
         "question_index": index,
         "branching_factor": branching_factor,
         "question": question,
     }
     span_context = (
-        tracer.start_as_current_span("lats.question", attributes=span_attrs)
+        invoke_agent_span(
+            tracer,
+            "lats.question",
+            agent_name=f"{APP_NAME}.question",
+            payload=question,
+            in_process_call=True,
+            extra_attributes=span_attrs,
+        )
         if tracer
-        else nullcontext()
+        else nullcontext((None, 0))
     )
-    with span_context as span:
+    with span_context as (span, question_input_bytes):
         try:
             for event in graph.stream({"input": question}, config=config):
                 summary = _summarize_event(event)
                 events.append(summary)
                 for node_name, payload in event.items():
-                    node_attrs = {
-                        "node": node_name,
-                        "agent.name": f"{APP_NAME}.node.{node_name}",
-                    }
-                    node_span = (
-                        tracer.start_as_current_span(
-                            f"lats.node.{node_name}", attributes=node_attrs
+                    node_attrs = {"node": node_name}
+                    node_span_cm = (
+                        invoke_agent_span(
+                            tracer,
+                            f"lats.node.{node_name}",
+                            agent_name=f"{APP_NAME}.node.{node_name}",
+                            payload=payload,
+                            in_process_call=True,
+                            extra_attributes=node_attrs,
                         )
                         if tracer
-                        else nullcontext()
+                        else nullcontext((None, 0))
                     )
-                    with node_span:
+                    with node_span_cm as (_node_span, _):
                         if isinstance(payload, dict):
                             maybe_root = payload.get("root")
                             if isinstance(maybe_root, Node):
@@ -564,6 +670,8 @@ def run_question(
             f"Final height={root_node.height}, visits={root_node.visits}, "
             f"node_value={solution_node.value:.3f}, solved={solved}"
         )
+        if span and best_response is not None:
+            record_invoke_agent_output(span, best_response, question_input_bytes)
         record_usage_on_span(span, usage_callback)
         return RunResult(
             index=index,
