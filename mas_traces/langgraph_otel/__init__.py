@@ -143,6 +143,7 @@ def setup_jsonl_tracing(
     log_dir: Path,
     run_id: str,
     environment: str | None = None,
+    set_global_provider: bool = True,
 ) -> tuple[trace.Tracer, Path, TracerProvider]:
     """
     Configure an OpenTelemetry tracer provider that writes spans to JSONL,
@@ -165,8 +166,11 @@ def setup_jsonl_tracing(
     provider = TracerProvider(resource=resource)
     exporter = JsonlSpanExporter(trace_path, dict(resource.attributes), app_name)
     provider.add_span_processor(SimpleSpanProcessor(exporter))
-    trace.set_tracer_provider(provider)
-    tracer = trace.get_tracer(app_name)
+    if set_global_provider:
+        trace.set_tracer_provider(provider)
+        tracer = trace.get_tracer(app_name)
+    else:
+        tracer = provider.get_tracer(app_name)
     return tracer, trace_path, provider
 
 

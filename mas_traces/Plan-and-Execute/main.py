@@ -819,6 +819,7 @@ def main():
                 log_dir=LOG_DIR,
                 run_id=run_id,
                 environment=DEFAULT_ENVIRONMENT,
+                set_global_provider=False,
             )
             LOGGER.info("OpenTelemetry trace log: %s", trace_log_path)
         except Exception as exc:  # pragma: no cover - tracing is optional
