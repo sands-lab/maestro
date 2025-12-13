@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import csv
 import json
 import logging
 import operator
@@ -30,13 +31,20 @@ except ImportError:  # pragma: no cover - fall back to legacy name
 
         def create_plan_agent(llm, tools, prompt):
             return _create_agent(llm, tools, prompt=prompt)
+try:
+    from langchain.tools.base import BaseTool
+except ImportError:  # pragma: no cover - older LangChain versions
+    from langchain_core.tools import BaseTool  # type: ignore
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
+from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
@@ -86,13 +94,14 @@ def _relative_path(path: Path) -> str:
         return str(path)
 
 
-class PlanExecute(TypedDict):
+class PlanExecute(TypedDict, total=False):
     """LangGraph state used for the benchmark."""
 
     input: str
     plan: List[str]
     past_steps: Annotated[List[Tuple[str, str]], operator.add]
     response: str
+    references: str
 
 
 class Plan(BaseModel):
@@ -123,6 +132,9 @@ class BenchmarkConfig:
     """CLI configuration for the benchmark."""
 
     question: str
+    references: Optional[str]
+    question_index: Optional[int]
+    question_id: Optional[str]
     executor_model: str
     planner_model: str
     replanner_model: str
@@ -132,6 +144,89 @@ class BenchmarkConfig:
     agent_temperature: float
     verbose: bool
     metrics_interval: float
+    evidence_source: str
+    dataset_source: Optional[str]
+
+
+@dataclass
+class QuestionRecord:
+    prompt: str
+    references: Optional[str] = None
+    metadata: Optional[Dict[str, str]] = None
+
+
+REFERENCE_COLUMNS = [
+    ("gold_context", "Gold Context"),
+    ("supporting_context", "Supporting Context"),
+    ("supporting_facts", "Supporting Facts"),
+    ("context", "Context"),
+    ("references", "References"),
+    ("distractors", "Distractor Passages"),
+    ("evidence", "Evidence"),
+]
+
+
+def _extract_references_from_row(row: Dict[str, str]) -> Optional[str]:
+    blocks: List[str] = []
+    for column, label in REFERENCE_COLUMNS:
+        value = row.get(column)
+        if value:
+            value = value.strip()
+            if value:
+                blocks.append(f"{label}:\n{value}")
+    combined = "\n\n".join(blocks).strip()
+    return combined or None
+
+
+def load_questions(path: Path) -> List[QuestionRecord]:
+    if not path.exists():
+        raise FileNotFoundError(f"Questions file not found: {path}")
+    suffix = path.suffix.lower()
+    records: List[QuestionRecord] = []
+    if suffix == ".csv":
+        with path.open("r", encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle)
+            if not reader.fieldnames:
+                return []
+            lower_to_actual = {col.lower(): col for col in reader.fieldnames}
+            question_col = lower_to_actual.get("question")
+            if not question_col:
+                raise ValueError("CSV must contain a 'question' column.")
+            for row in reader:
+                prompt = row.get(question_col, "").strip()
+                if not prompt:
+                    continue
+                references = _extract_references_from_row(row)
+                records.append(
+                    QuestionRecord(prompt=prompt, references=references, metadata=row)
+                )
+        return records
+    # Plaintext fallback: one question per line
+    with path.open("r", encoding="utf-8") as handle:
+        lines = [line.strip() for line in handle if line.strip()]
+    return [QuestionRecord(prompt=line) for line in lines]
+
+
+def _question_with_references(question: str, references: Optional[str]) -> str:
+    if references:
+        return f"{question}\n\nReference passages:\n{references}"
+    return question
+
+
+class ReferenceLookupTool(BaseTool):
+    """Tool that returns dataset-provided passages instead of calling Tavily."""
+
+    name: str = "reference_lookup"
+    description: str = (
+        "Return curated reference passages provided alongside the current question."
+    )
+    references: str = "No reference passages available."
+
+    def _run(self, query: str, *args, **kwargs) -> str:  # type: ignore[override]
+        return self.references
+
+    async def _arun(self, query: str, *args, **kwargs) -> str:  # type: ignore[override]
+        return self.references
 
 
 def _append_callback(config: Optional[dict], callback) -> dict:
@@ -167,9 +262,12 @@ def _append_callback(config: Optional[dict], callback) -> dict:
     return new_config
 
 
-def ensure_env_vars() -> None:
+def ensure_env_vars(require_tavily: bool) -> None:
     """Make sure the APIs used by the benchmark are configured."""
-    missing = [var for var in ("OPENAI_API_KEY", "TAVILY_API_KEY") if not os.getenv(var)]
+    required = ["OPENAI_API_KEY"]
+    if require_tavily:
+        required.append("TAVILY_API_KEY")
+    missing = [var for var in required if not os.getenv(var)]
     if missing:
         raise RuntimeError(
             f"Missing required environment variables: {', '.join(missing)}. "
@@ -219,7 +317,12 @@ def build_plan_execute_app(
 ):
     """Create the LangGraph runnable for the benchmark."""
 
-    tools = [TavilySearchResults(max_results=bench_config.max_search_results)]
+    use_tavily = bench_config.evidence_source == "tavily"
+    if use_tavily:
+        tools = [TavilySearchResults(max_results=bench_config.max_search_results)]
+    else:
+        references = bench_config.references or ""
+        tools = [ReferenceLookupTool(references=references)]
     exec_llm = ChatOpenAI(
         model=bench_config.executor_model, temperature=bench_config.agent_temperature
     )
@@ -237,10 +340,16 @@ def build_plan_execute_app(
         plan = state["plan"]
         plan_str = "\n".join(f"{i + 1}. {step}" for i, step in enumerate(plan))
         task = plan[0]
+        references = state.get("references")
         task_formatted = (
             f"For the following plan:\n{plan_str}\n\n"
             f"You are tasked with executing step 1, {task}."
         )
+        if references:
+            task_formatted += (
+                "\n\nReference passages (use these instead of searching unnecessarily):\n"
+                f"{references}"
+            )
         payload = {
             "task": task,
             "plan_length": len(plan),
@@ -277,8 +386,11 @@ def build_plan_execute_app(
         ) as (node_span, _):
 
             def _invoke(updated_config):
+                question = _question_with_references(
+                    state["input"], state.get("references")
+                )
                 return planner.invoke(
-                    {"messages": [("user", state["input"])]}, config=updated_config
+                    {"messages": [("user", question)]}, config=updated_config
                 )
 
             plan = run_llm_with_span(
@@ -315,7 +427,11 @@ def build_plan_execute_app(
         ) as (node_span, _):
 
             def _invoke(updated_config):
-                return replanner.invoke(state, config=updated_config)
+                state_payload = dict(state)
+                state_payload["input"] = _question_with_references(
+                    state["input"], state.get("references")
+                )
+                return replanner.invoke(state_payload, config=updated_config)
 
             output = run_llm_with_span(
                 component_tracer,
@@ -411,6 +527,9 @@ def _stream_events(app, config: BenchmarkConfig, log_handle, tracer: trace.Trace
             "replanner_model": config.replanner_model,
             "max_search_results": config.max_search_results,
             "agent_temperature": config.agent_temperature,
+            "question_index": config.question_index,
+            "evidence_source": config.evidence_source,
+            "references_available": bool(config.references),
         }
         run_context = (
             invoke_agent_span(
@@ -424,23 +543,33 @@ def _stream_events(app, config: BenchmarkConfig, log_handle, tracer: trace.Trace
             else nullcontext((None, 0))
         )
         with run_context as (run_span, input_bytes):
-            async for event in app.astream(
-                {"input": config.question}, config={"recursion_limit": config.recursion_limit}
-            ):
-                for node, payload in event.items():
-                    record = {
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "node": node,
-                        "payload": _jsonable(payload),
-                    }
-                    log_handle.write(json.dumps(record) + "\n")
-                    log_handle.flush()
-                    if config.verbose:
-                        LOGGER.info(_summarize_event(node, payload))
-                    if node == "__end__":
-                        final_response = payload.get("response")
-            if run_span and final_response is not None:
-                record_invoke_agent_output(run_span, final_response, input_bytes)
+            initial_state: Dict[str, object] = {"input": config.question}
+            if config.references:
+                initial_state["references"] = config.references
+            try:
+                async for event in app.astream(
+                    initial_state, config={"recursion_limit": config.recursion_limit}
+                ):
+                    for node, payload in event.items():
+                        record = {
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "node": node,
+                            "payload": _jsonable(payload),
+                        }
+                        log_handle.write(json.dumps(record) + "\n")
+                        log_handle.flush()
+                        if config.verbose:
+                            LOGGER.info(_summarize_event(node, payload))
+                        if node == "__end__":
+                            final_response = payload.get("response")
+            except Exception as exc:
+                if run_span:
+                    run_span.record_exception(exc)
+                    run_span.set_status(Status(StatusCode.ERROR, str(exc)))
+                raise
+            finally:
+                if run_span and final_response is not None:
+                    record_invoke_agent_output(run_span, final_response, input_bytes)
         return final_response
 
     return _runner()
@@ -455,12 +584,17 @@ def _write_metadata(path: Path, run_id: str, config: BenchmarkConfig, status: st
         "run_id": run_id,
         "app_name": "plan_and_execute_benchmark",
         "question": config.question,
+        "question_index": config.question_index,
+        "question_id": config.question_id,
         "executor_model": config.executor_model,
         "planner_model": config.planner_model,
         "replanner_model": config.replanner_model,
         "recursion_limit": config.recursion_limit,
         "max_search_results": config.max_search_results,
         "agent_temperature": config.agent_temperature,
+        "evidence_source": config.evidence_source,
+        "dataset_source": config.dataset_source,
+        "references_present": bool(config.references),
         "status": status,
         "cli_argv": sys.argv[1:],
         "env_vars_present": {
@@ -484,7 +618,7 @@ async def run_benchmark(
     metrics_log_path: Path | None = None,
 ) -> str | None:
     """Entry point used by asyncio.run."""
-    ensure_env_vars()
+    ensure_env_vars(config.evidence_source == "tavily")
     app = build_plan_execute_app(config, tracer=tracer)
     log_path = LOG_DIR / f"run_{run_id}.jsonl"
     metadata_path = LOG_DIR / f"run_{run_id}.metadata.json"
@@ -497,6 +631,11 @@ async def run_benchmark(
             final_response = await _stream_events(app, config, log_handle, tracer=tracer)
         status = "success"
         return final_response
+    except GraphRecursionError as exc:
+        error_message = str(exc)
+        status = "failed"
+        LOGGER.error("Graph recursion limit reached: %s", exc)
+        return None
     except Exception as exc:
         error_message = repr(exc)
         status = "failed"
@@ -515,7 +654,7 @@ async def run_benchmark(
         )
 
 
-def parse_args(argv: List[str] | None = None) -> BenchmarkConfig:
+def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Plan-and-Execute LangGraph benchmark translated from the notebook."
     )
@@ -523,6 +662,28 @@ def parse_args(argv: List[str] | None = None) -> BenchmarkConfig:
         "--question",
         default=DEFAULT_OBJECTIVE,
         help="Objective or question to hand to the plan-and-execute agent.",
+    )
+    parser.add_argument(
+        "--questions-file",
+        help="Optional CSV/plaintext file containing questions (with optional references).",
+    )
+    parser.add_argument(
+        "--start-index",
+        type=int,
+        default=0,
+        help="0-based index into the dataset to start from when using --questions-file.",
+    )
+    parser.add_argument(
+        "--num-questions",
+        type=int,
+        default=1,
+        help="Number of questions to run sequentially from the dataset.",
+    )
+    parser.add_argument(
+        "--evidence-source",
+        choices=("tavily", "dataset"),
+        default="tavily",
+        help="Use Tavily search (default) or dataset-provided references as the tool context.",
     )
     parser.add_argument(
         "--executor-model",
@@ -577,86 +738,142 @@ def parse_args(argv: List[str] | None = None) -> BenchmarkConfig:
         ),
     )
     args = parser.parse_args(argv)
-    return BenchmarkConfig(
-        question=args.question,
-        executor_model=args.executor_model,
-        planner_model=args.planner_model,
-        replanner_model=args.replanner_model,
-        prompt=args.prompt,
-        recursion_limit=args.recursion_limit,
-        max_search_results=args.max_search_results,
-        agent_temperature=args.agent_temperature,
-        verbose=not args.quiet,
-        metrics_interval=max(1.0, args.metrics_interval),
-    )
+    if args.num_questions <= 0:
+        parser.error("--num-questions must be positive.")
+    if args.start_index < 0:
+        parser.error("--start-index must be non-negative.")
+    return args
 
 
 def main():
-    config = parse_args()
-    run_id = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    tracer = None
-    trace_log_path = None
-    provider = None
-    metrics_recorder: Optional[PsutilMetricsRecorder] = None
-    metrics_log_path: Optional[Path] = None
-    try:
-        tracer, trace_log_path, provider = setup_jsonl_tracing(
-            app_name=APP_NAME,
-            service_name=TRACE_SERVICE_NAME,
-            service_version=TRACE_SERVICE_VERSION,
-            log_dir=LOG_DIR,
-            run_id=run_id,
-            environment=DEFAULT_ENVIRONMENT,
-        )
-        LOGGER.info("OpenTelemetry trace log: %s", trace_log_path)
-    except Exception as exc:  # pragma: no cover - tracing is optional
-        LOGGER.warning("Unable to initialize OpenTelemetry tracing: %s", exc)
-        tracer = None
-        trace_log_path = None
-        provider = None
-    try:
-        metrics_recorder = PsutilMetricsRecorder(
-            service_name=TRACE_SERVICE_NAME,
-            service_version=TRACE_SERVICE_VERSION,
-            run_id=run_id,
-            output_dir=METRICS_DIR,
-            environment=DEFAULT_ENVIRONMENT,
-            scope=f"{APP_NAME}.system-metrics",
-            interval_seconds=max(1.0, config.metrics_interval),
-            logger=LOGGER,
-        )
-        metrics_log_path = metrics_recorder.output_path
-        metrics_recorder.start()
-        LOGGER.info("System metrics log: %s", metrics_log_path)
-    except Exception as exc:  # pragma: no cover - metrics optional
-        LOGGER.warning("Unable to initialize system metrics recorder: %s", exc)
-        metrics_recorder = None
-        metrics_log_path = None
-    try:
-        final_answer = asyncio.run(
-            run_benchmark(
-                config,
-                run_id,
-                tracer=tracer,
-                trace_log_path=trace_log_path,
-                metrics_log_path=metrics_log_path,
-            )
-        )
-    except KeyboardInterrupt:
-        LOGGER.warning("Benchmark interrupted by user.")
-        return
-    except Exception:
-        raise
+    args = parse_args()
+    question_records: List[Tuple[int, QuestionRecord]] = []
+    dataset_source: Optional[str] = None
+    if args.questions_file:
+        dataset_path = Path(args.questions_file)
+        dataset_source = str(dataset_path)
+        all_questions = load_questions(dataset_path)
+        if not all_questions:
+            raise SystemExit(f"No questions found in {dataset_path}")
+        if args.start_index >= len(all_questions):
+            raise SystemExit("Start index exceeds dataset length.")
+        end = min(len(all_questions), args.start_index + args.num_questions)
+        subset = all_questions[args.start_index:end]
+        if args.evidence_source == "dataset":
+            missing = [
+                args.start_index + offset
+                for offset, record in enumerate(subset)
+                if not record.references
+            ]
+            if missing:
+                preview = ", ".join(str(idx) for idx in missing[:5])
+                raise SystemExit(
+                    "Dataset evidence selected but missing reference passages for "
+                    f"indices: {preview}"
+                )
+        question_records = [
+            (idx, record) for idx, record in enumerate(subset, start=args.start_index)
+        ]
     else:
-        if final_answer:
-            LOGGER.info("Final response: %s", final_answer)
+        if args.evidence_source == "dataset":
+            raise SystemExit(
+                "--evidence-source dataset requires --questions-file with reference passages."
+            )
+        question_records = [(0, QuestionRecord(prompt=args.question))]
+
+    base_kwargs = {
+        "executor_model": args.executor_model,
+        "planner_model": args.planner_model,
+        "replanner_model": args.replanner_model,
+        "prompt": args.prompt,
+        "recursion_limit": args.recursion_limit,
+        "max_search_results": args.max_search_results,
+        "agent_temperature": args.agent_temperature,
+        "verbose": not args.quiet,
+        "metrics_interval": max(1.0, args.metrics_interval),
+        "evidence_source": args.evidence_source,
+        "dataset_source": dataset_source,
+    }
+
+    for dataset_index, record in question_records:
+        run_id = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        tracer: Optional[trace.Tracer] = None
+        trace_log_path: Optional[Path] = None
+        provider: Optional[TracerProvider] = None
+        metrics_recorder: Optional[PsutilMetricsRecorder] = None
+        metrics_log_path: Optional[Path] = None
+        references = record.references if args.evidence_source == "dataset" else None
+        config = BenchmarkConfig(
+            question=record.prompt,
+            references=references,
+            question_index=dataset_index if dataset_source else None,
+            question_id=(record.metadata or {}).get("id") if record.metadata else None,
+            **base_kwargs,
+        )
+        LOGGER.info("Question %s: %s", dataset_index, record.prompt)
+        try:
+            tracer, trace_log_path, provider = setup_jsonl_tracing(
+                app_name=APP_NAME,
+                service_name=TRACE_SERVICE_NAME,
+                service_version=TRACE_SERVICE_VERSION,
+                log_dir=LOG_DIR,
+                run_id=run_id,
+                environment=DEFAULT_ENVIRONMENT,
+            )
+            LOGGER.info("OpenTelemetry trace log: %s", trace_log_path)
+        except Exception as exc:  # pragma: no cover - tracing is optional
+            LOGGER.warning("Unable to initialize OpenTelemetry tracing: %s", exc)
+            tracer = None
+            trace_log_path = None
+            provider = None
+        try:
+            metrics_recorder = PsutilMetricsRecorder(
+                service_name=TRACE_SERVICE_NAME,
+                service_version=TRACE_SERVICE_VERSION,
+                run_id=run_id,
+                output_dir=METRICS_DIR,
+                environment=DEFAULT_ENVIRONMENT,
+                scope=f"{APP_NAME}.system-metrics",
+                interval_seconds=config.metrics_interval,
+                logger=LOGGER,
+            )
+            metrics_log_path = metrics_recorder.output_path
+            metrics_recorder.start()
+            LOGGER.info("System metrics log: %s", metrics_log_path)
+        except Exception as exc:  # pragma: no cover - metrics optional
+            LOGGER.warning("Unable to initialize system metrics recorder: %s", exc)
+            metrics_recorder = None
+            metrics_log_path = None
+        try:
+            final_answer = asyncio.run(
+                run_benchmark(
+                    config,
+                    run_id,
+                    tracer=tracer,
+                    trace_log_path=trace_log_path,
+                    metrics_log_path=metrics_log_path,
+                )
+            )
+        except KeyboardInterrupt:
+            LOGGER.warning("Benchmark interrupted by user.")
+            break
+        except Exception:
+            raise
         else:
-            LOGGER.info("Benchmark finished but no response was produced.")
-    finally:
-        if metrics_recorder:
-            metrics_recorder.stop()
-        if provider:
-            provider.shutdown()
+            if final_answer:
+                LOGGER.info("Final response: %s", final_answer)
+            else:
+                LOGGER.info("Benchmark finished but no response was produced.")
+        finally:
+            if provider:
+                try:
+                    provider.force_flush()
+                except Exception:  # pragma: no cover - best effort
+                    pass
+            if metrics_recorder:
+                metrics_recorder.stop()
+            if provider:
+                provider.shutdown()
 
 
 if __name__ == "__main__":
