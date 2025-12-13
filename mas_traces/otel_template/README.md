@@ -30,7 +30,7 @@ Every span MUST include the LLM metrics below, plus optional CPU/memory attribut
 | `gen_ai.usage.total_tokens` | Sum of input + output or provider-reported total (default `0`). |
 | `gen_ai.llm.call.count` | Number of LLM requests represented by the span (`0` if none). |
 | `gen_ai.mcp.call.count` | Number of MCP server/tool invocations (`0` if none). |
-| `gen_ai.operation.name` | `call_llm`, `invoke_agent`, `execute_tool`, etc. |
+| `gen_ai.operation.name` | **Standard OTEL field** - Predefined values: `chat`, `create_agent`, `embeddings`, `execute_tool`, `generate_content`, `invoke_agent`, `text_completion`. Use when available, but analysis tools support fallback detection via span name patterns. |
 | `gen_ai.system` / `gen_ai.request.model` | Provider + model identifier. |
 | `gen_ai.response.finish_reasons` | Array of finish reasons (empty array if unknown). |
 | `gen_ai.tool.*`, `gcp.vertex.agent.*`, `agent.name`, `tot.*`, `mcp.*`, ... | Optional domain-specific keys mirrored from existing traces; populate when available, otherwise skip.
@@ -47,22 +47,41 @@ Optional but encouraged:
 
 Spans can attach `events` with `timestamp` + `attributes`. Use them for step-by-step summaries (`tot.summary`, `agent.log`, etc.) so downstream UIs can reconstruct the execution path.
 
-## Template File
+## Template Files
 
-`otel_span_template.json` shows the superset structure with placeholder values. Duplicate it (or load/extend programmatically) when wiring new exporters to ensure:
+### File Format Standard
 
-1. Resource attributes are set once per trace/write.
-2. Span payloads always contain the common metrics block (LLM/MCP usage, communication defaults, etc.).
-3. Optional blocks (`communication`, `events`) follow a consistent shape even when empty.
+**Standard JSONL Format (Required for Production)**:
+- Each line contains **one complete JSON object** (no outer array `[]`)
+- File extension: `.jsonl`
+- Example:
+  ```jsonl
+  {"trace_id": "abc", "span_id": "1", ...}
+  {"trace_id": "abc", "span_id": "2", ...}
+  {"trace_id": "def", "span_id": "3", ...}
+  ```
+
+Template files provided:
+- `otel_span_template.jsonl` - **Standard JSONL format** (one complete JSON object per line, no outer array). **Use this as the reference for exports.**
+- `otel_span_template_for_human_reading.json` - Legacy JSON array format (deprecated, kept for human-reading reference only). Do not use this format for new exports.
+
+**Note**: To view the structure of the JSONL template in a readable format, you can use: `python3 -m json.tool < otel_span_template.jsonl`
+
 
 If a field truly doesn't apply, omit it rather than renaming—scripts already treat missing keys as "not recorded".
 
-**Note**: The `.json` template file is provided in a human-readable format for documentation purposes. **Actual exports should use JSONL format** (one JSON object per line) for efficient streaming and processing. See `otel_span_template.json` for the structure reference, but export as `.jsonl` in your implementation.
-
 ## CPU/Memory Metrics
 
-CPU and memory metrics are collected separately from spans (e.g., via a `PeriodicExportingMetricReader`). Use `otel_metrics_template.json` as the reference when emitting those metrics:
+CPU and memory metrics are collected separately from spans (e.g., via a `PeriodicExportingMetricReader`). Use `otel_metrics_template.jsonl` as the reference when emitting those metrics:
 
 - Emit `process.cpu.usage` (`%`) and `process.memory.usage_bytes` (`bytes`) with the documented structure (`timestamp`, `metric_name`, `unit`, `data_points`, `resource`, `scope`).
-- Write them as JSONL (one metric record per line) alongside your span logs, typically under a `metrics/` directory.
+- Write them as **standard JSONL format** (one metric record per line, no outer array) alongside your span logs, typically under a `metrics/` directory.
+- Use `.jsonl` file extension
+- Each line contains one complete metric object: `{"timestamp": "...", "metric_name": "...", ...}`
 - Do **not** insert those periodic readings directly into span payloads; span attributes should remain focused on trace context, while the metrics file provides the time-series feed for dashboards.
+
+Template files provided:
+- `otel_metrics_template.jsonl` - **Standard JSONL format** (one complete metric object per line, no outer array). **Use this as the reference for exports.**
+- `otel_metrics_template_for_human_reading.json` - Legacy JSON array format (deprecated, kept for human-reading reference only). Do not use this format for new exports.
+
+**Note**: To view the structure of the JSONL template in a readable format, you can use: `python3 -m json.tool < otel_metrics_template.jsonl | head -30`

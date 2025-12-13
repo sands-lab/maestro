@@ -8,6 +8,7 @@
     "start_time": 0,
     "end_time": 0,
     "duration_ns": 0,
+    "kind": "<INTERNAL|SERVER|CLIENT|PRODUCER|CONSUMER>",
     "status": {
       "status_code": "<UNSET|OK|ERROR>",
       "description": "<optional-description>"

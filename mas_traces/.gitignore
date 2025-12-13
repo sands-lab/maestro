@@ -8,3 +8,10 @@ __pycache__/
 
 # Exclude README.md from being ignored
 !README.md
+
+!otel_template/otel_metrics_template.jsonl
+!otel_template/otel_span_template.jsonl
+!otel_template/otel_metrics_template_for_human_reading.json
+!otel_template/otel_span_template_for_human_reading.json
+
+.DS_Store
