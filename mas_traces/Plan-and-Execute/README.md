@@ -39,6 +39,7 @@ export TAVILY_API_KEY=tvly-...
 ```bash
 python main.py \
   --questions-file data/hotpot_dev_questions.csv \
+  --metrics-interval 0.5 \
   --start-index 0 \
   --num-questions 2 \
   --evidence-source dataset

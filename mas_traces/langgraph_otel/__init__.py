@@ -202,6 +202,7 @@ class PsutilMetricsRecorder:
         self.output_path = self.output_dir / f"{service_name}_{run_id}.metrics.jsonl"
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
+        self._process = self._init_process()
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -295,22 +296,33 @@ class PsutilMetricsRecorder:
         }
 
     def _read_cpu_percent(self) -> float:
-        if psutil is None:
+        process = self._process
+        if process is None:
             return 0.0
         try:
-            process = psutil.Process()
             return float(process.cpu_percent(interval=None))
         except Exception:  # pragma: no cover
             return 0.0
 
     def _read_memory_rss(self) -> float:
-        if psutil is None:
+        process = self._process
+        if process is None:
             return 0.0
         try:
-            process = psutil.Process()
             return float(process.memory_info().rss)
         except Exception:  # pragma: no cover
             return 0.0
+
+    def _init_process(self):
+        if psutil is None:
+            return None
+        try:
+            process = psutil.Process()
+            # Prime cpu_percent so subsequent calls return deltas instead of 0.0.
+            process.cpu_percent(interval=None)
+            return process
+        except Exception:
+            return None
 
 
 def _byte_length(value: object, _visited: Optional[set[int]] = None) -> int:

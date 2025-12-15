@@ -30,6 +30,7 @@ Set the required credentials before running:
 ```bash
 python main.py \
   --model gpt-4o-mini \
+  --metrics-interval 0.5 \
   --problem-index 0 \
   --num-puzzles 1 \
   --beam-size 3 \

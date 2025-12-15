@@ -89,6 +89,7 @@ Once the CSV exists you can run the agent using the dataset-provided context ins
 ```bash
 python main.py \
   --questions-file data/hotpot_dev_questions.csv \
+  --metrics-interval 0.5 \
   --evidence-source dataset \
   --num-questions 5
 ```

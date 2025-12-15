@@ -28,6 +28,19 @@ export TAVILY_API_KEY=tvly-...  # optional if you run with --disable-web-search
 python main.py --question "How does the AlphaCodium paper work?"
 ```
 
+## 2. Run the benchmark
+
+Batch runs over a dataset use the CLI flags below (any `.txt` or `.csv`
+question file works as long as the CSV has a `question` column):
+
+```bash
+python main.py \
+  --questions-file ../Plan-and-Execute/data/hotpot_dev_questions.csv \
+  --metrics-interval 0.5 \
+  --start-index 0 \
+  --num-questions 2
+```
+
 Key CLI flags:
 
 - `--questions-file questions.csv --num-questions 5` – iterate through a dataset
