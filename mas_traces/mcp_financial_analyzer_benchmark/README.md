@@ -1,6 +1,8 @@
 # MCP Financial Analyzer Benchmark
 
-This project republishes the `feat/trace-collection` version of Chen Ishi’s financial analyzer with a friendlier setup: standard Python virtual environments, configurable MCP search servers, and JSONL trace files saved under `logs/`. Each run generates both a Markdown report and a metadata sidecar that captures the exact configuration used.
+| Framework | Description |
+|---|---|
+| mcp-agent | Multi-agent workflow: plans steps, delegates tasks to agents, gathers and evaluates research, and synthesizes a financial report. |
 
 ---
 
@@ -8,26 +10,16 @@ This project republishes the `feat/trace-collection` version of Chen Ishi’s fi
 
 ```bash
 cd mas_traces/mcp_financial_analyzer_benchmark
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# Install required Python version and Python packages
+uv sync
 
+# Configure secrets:
+# Add OpenAI key + one search provider (e.g. Tavily, see below).
 cp mcp_agent.secrets.yaml.example mcp_agent.secrets.yaml
-# Add at least an OpenAI key + one search provider (Tavily, see below).
 
-python main.py "Apple" --llm-backend openai --search-providers tavily
+# Run example
+uv run main.py "Apple" --llm-backend openai --search-providers tavily
 ```
-
-The CLI auto-loads `mcp_agent.config.yaml`/`mcp_agent.secrets.yaml`, seeds any missing `*_API_KEY` environment variables for the current process, runs the workflow, and restores your shell environment afterward.
-
----
-
-## Requirements
-
-- Python 3.10+
-- Python dependencies:
-  - `pip install -r requirements.txt` (installs `mcp-agent`, `mcp-server-fetch`, Tavily clients, etc.)
-- API keys for your preferred LLM and search provider(s)
 
 ---
 
