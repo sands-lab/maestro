@@ -1,0 +1,22 @@
+{
+  "name": "Content Editor Agent",
+  "description": "Proofreads and polishes content to improve clarity and engagement.",
+  "url": "http://content-editor-agent:8080",
+  "version": "1.0.0",
+  "defaultInputModes": ["text", "text/plain"],
+  "defaultOutputModes": ["text", "text/plain"],
+  "capabilities": {
+    "streaming": true
+  },
+  "skills": [
+    {
+      "id": "content_editor",
+      "name": "Proofreads and polishes content",
+      "description": "Proofreads and polishes content to improve clarity and engagement",
+      "tags": ["edit", "proofread"],
+      "examples": [
+        "Proofread and polish the following content: 'Learning Java is fun and engaging.'"
+      ]
+    }
+  ]
+}

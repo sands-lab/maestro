@@ -1,0 +1,68 @@
+{
+  "Brand SEO": {
+    "traces_dir": "data/traces.parquet",
+    "metrics_dir": "data/metrics.parquet",
+    "dataset_example_name": "brand-search-optimization",
+    "tags": ["suite-1"]
+  },
+  "Marketing": {
+    "traces_dir": "data/traces.parquet",
+    "metrics_dir": "data/metrics.parquet",
+    "dataset_example_name": "marketing-agency",
+    "tags": ["suite-1"]
+  },
+  "Img. Scr.": {
+    "traces_dir": "data/traces.parquet",
+    "metrics_dir": "data/metrics.parquet",
+    "dataset_example_name": "image-scoring",
+    "tags": ["suite-1"]
+  },
+  "Content Creat.": {
+    "traces_dir": "data/traces.parquet",
+    "metrics_dir": "data/metrics.parquet",
+    "dataset_example_name": "content-creation",
+    "tags": ["suite-1"]
+  },
+  "CRAG": {
+    "traces_dir": "data/traces.parquet",
+    "metrics_dir": "data/metrics.parquet",
+    "dataset_example_name": "crag",
+    "tags": ["suite-1"]
+  },
+  "ToT": {
+    "traces_dir": "data/traces.parquet",
+    "metrics_dir": "data/metrics.parquet",
+    "dataset_example_name": "tree-of-thoughts",
+    "tags": ["suite-1"]
+  },
+  "LATS": {
+    "traces_dir": "data/traces.parquet",
+    "metrics_dir": "data/metrics.parquet",
+    "dataset_example_name": "language-agent-tree-search",
+    "tags": ["suite-1"]
+  },
+  "Plan and Exec.": {
+    "traces_dir": "data/traces.parquet",
+    "metrics_dir": "data/metrics.parquet",
+    "dataset_example_name": "plan-and-execute",
+    "tags": ["suite-1"]
+  },
+  "Mag.-One": {
+    "traces_dir": "data/traces.parquet",
+    "metrics_dir": "data/metrics.parquet",
+    "dataset_example_name": "Magentic-One",
+    "tags": ["suite-1"]
+  },
+  "Stock Res.": {
+    "traces_dir": "data/traces.parquet",
+    "metrics_dir": "data/metrics.parquet",
+    "dataset_example_name": "Stock-Research-Example",
+    "tags": ["suite-1"]
+  },
+  "Travel Plan.": {
+    "traces_dir": "data/traces.parquet",
+    "metrics_dir": "data/metrics.parquet",
+    "dataset_example_name": "Travel-Planning",
+    "tags": ["suite-1"]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "parquet_path": "../../data/parquet/traces.parquet",
+  "inputs": [
+    [
+      "lats",
+      [
+        {"label": "gpt-5-mini", "example_name": "language-agent-tree-search", "model": "gpt-5-mini", "variant": "without-tavily", "color": "#1f77b4"},
+        {"label": "gpt-5-nano", "example_name": "language-agent-tree-search", "model": "gpt-5-nano", "variant": "without-tavily", "color": "#6baed6"},
+        {"label": "gpt-4o-mini", "example_name": "language-agent-tree-search", "model": "gpt-4o-mini", "variant": "without-tavily", "color": "#9ecae1"},
+        {"label": "gemini-2.5-flash", "example_name": "language-agent-tree-search", "model": "gemini-2.5-flash", "variant": "without-tavily", "color": "#e15759"},
+        {"label": "gemini-2.5-flash-lite", "example_name": "language-agent-tree-search", "model": "gemini-2.5-flash-lite", "variant": "without-tavily", "color": "#f28e2b"},
+        {"label": "gemini-2.0-flash-lite", "example_name": "language-agent-tree-search", "model": "gemini-2.0-flash-lite", "variant": "without-tavily", "color": "#edc948"}
+      ]
+    ],
+    [
+      "crag",
+      [
+        {"label": "gpt-5-mini", "example_name": "crag", "model": "gpt-5-mini", "variant": "without-tavily", "color": "#1f77b4"},
+        {"label": "gpt-5-nano", "example_name": "crag", "model": "gpt-5-nano", "variant": "without-tavily", "color": "#6baed6"},
+        {"label": "gpt-4o-mini", "example_name": "crag", "model": "gpt-4o-mini", "variant": "without-tavily", "color": "#9ecae1"},
+        {"label": "gemini-2.5-flash", "example_name": "crag", "model": "gemini-2.5-flash", "variant": "without-tavily", "color": "#e15759"},
+        {"label": "gemini-2.5-flash-lite", "example_name": "crag", "model": "gemini-2.5-flash-lite", "variant": "without-tavily", "color": "#f28e2b"},
+        {"label": "gemini-2.0-flash-lite", "example_name": "crag", "model": "gemini-2.0-flash-lite", "variant": "without-tavily", "color": "#edc948"}
+      ]
+    ],
+    [
+      "P&E",
+      [
+        {"label": "gpt-5-mini", "example_name": "plan-and-execute", "model": "gpt-5-mini", "variant": "without-tavily", "color": "#1f77b4"},
+        {"label": "gpt-5-nano", "example_name": "plan-and-execute", "model": "gpt-5-nano", "variant": "without-tavily", "color": "#6baed6"},
+        {"label": "gpt-4o-mini", "example_name": "plan-and-execute", "model": "gpt-4o-mini", "variant": "without-tavily", "color": "#9ecae1"},
+        {"label": "gemini-2.5-flash", "example_name": "plan-and-execute", "model": "gemini-2.5-flash", "variant": "without-tavily", "color": "#e15759"},
+        {"label": "gemini-2.5-flash-lite", "example_name": "plan-and-execute", "model": "gemini-2.5-flash-lite", "variant": "without-tavily", "color": "#f28e2b"},
+        {"label": "gemini-2.0-flash-lite", "example_name": "plan-and-execute", "model": "gemini-2.0-flash-lite", "variant": "without-tavily", "color": "#edc948"}
+      ]
+    ]
+  ]
+}

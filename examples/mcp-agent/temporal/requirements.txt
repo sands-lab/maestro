@@ -1,0 +1,6 @@
+# Core framework dependency
+mcp-agent @ git+https://github.com/chenIshi/mcp-agent@feat/trace-collection
+
+# Additional dependencies specific to this example
+openai>=1.58
+temporalio>=1.7

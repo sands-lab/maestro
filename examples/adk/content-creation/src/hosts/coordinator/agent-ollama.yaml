@@ -1,0 +1,39 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: coordinator-agent
+spec:
+  description: Host UI and coordinator that routes content creation tasks to planner/writer/editor agents.
+  type: BYO
+  byo:
+    deployment:
+      image: 10.140.0.2:5001/coordinator-agent:latest
+      imagePullPolicy: IfNotPresent
+      env:
+        # ollama/aliyun/google
+        - name: PROVIDER
+          value: "ollama"
+        - name: MODEL
+          value: "ollama/llama2:latest"
+        # ollama: "http://10.68.186.140:11434"
+        # aliyun: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        # google: ""
+        - name: API_BASE
+          value: "http://10.68.186.140:11434"
+        - name: OLLAMA_API_BASE
+          value: "http://10.68.186.140:11434"
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: kagent-google
+              key: GOOGLE_API_KEY
+        - name: ALIYUN_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aliyun-api-key
+              key: ALIYUN_API_KEY
+        - name: OLLAMA_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: fake-ollama-secret
+              key: fakeKey

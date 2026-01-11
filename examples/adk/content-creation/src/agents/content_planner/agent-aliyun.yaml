@@ -1,0 +1,37 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: content-planner-agent
+spec:
+  description: Creates outlines for content given a high-level description of the content.
+  type: BYO
+  byo:
+    deployment:
+      image: 10.140.0.2:5001/content_planner_agent:latest
+      imagePullPolicy: IfNotPresent
+      env:
+        # ollama/aliyun/google
+        - name: PROVIDER
+          value: "aliyun"
+        - name: MODEL
+          value: "dashscope/glm-4.6"
+        # ollama: "http://10.68.186.140:11434"
+        # aliyun: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        # google: ""
+        - name: API_BASE
+          value: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: kagent-google
+              key: GOOGLE_API_KEY
+        - name: ALIYUN_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aliyun-api-key
+              key: ALIYUN_API_KEY
+        - name: OLLAMA_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: fake-ollama-secret
+              key: fakeKey

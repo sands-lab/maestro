@@ -1,0 +1,13 @@
+{
+  "default": { "input_per_1m": 1.50, "output_per_1m": 1.50 },
+
+  "openai/gpt-5o-mini":   { "input_per_1m": 0.25,  "output_per_1m": 2.00 },
+  "openai/gpt-5o-nano":   { "input_per_1m": 0.05,  "output_per_1m": 0.40 },
+  "openai/gpt-4o-mini":   { "input_per_1m": 0.15,  "output_per_1m": 0.60 },
+  "openai/text-embedding-3-small":   { "input_per_1m": 0.10,  "output_per_1m": 0.00 },
+
+  "vertex_ai/gemini-2.0-flash-lite": { "input_per_1m": 0.075,  "output_per_1m": 0.30 },
+  "vertex_ai/gemini-2.5-flash-lite": { "input_per_1m": 0.10,  "output_per_1m": 0.40 },
+  "vertex_ai/gemini-2.5-flash":      { "input_per_1m": 0.30,  "output_per_1m": 2.50 },
+  "vertex_ai/gemini-embedding-001":  { "input_per_1m": 0.15,  "output_per_1m": 0.00 }
+}

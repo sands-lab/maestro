@@ -1,0 +1,17 @@
+Metadata-Version: 2.4
+Name: python_and_java_multiagent
+Version: 0.1.0
+Summary: Create content using a multi-agent system
+Requires-Python: >=3.13
+Description-Content-Type: text/markdown
+Requires-Dist: click>=8.2.0
+Requires-Dist: geopy>=2.4.1
+Requires-Dist: google-adk>=1.0.0
+Requires-Dist: gradio>=5.30.0
+Requires-Dist: a2a-sdk>=0.2.6
+Requires-Dist: litellm>=1.0.0
+Requires-Dist: opentelemetry-api>=1.20.0
+Requires-Dist: opentelemetry-sdk>=1.20.0
+Requires-Dist: opentelemetry-instrumentation-google-genai>=0.4b0
+Requires-Dist: opentelemetry-instrumentation-vertexai>=2.0b0
+Requires-Dist: python-dotenv>=1.0.0

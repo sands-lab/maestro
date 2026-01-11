@@ -1,0 +1,70 @@
+# Configuration for Stock Analyzer with g-search-mcp
+execution_engine: asyncio
+
+logger:
+  level: info
+  transports: [console]
+  progress_display: true
+
+otel:
+  enabled: true
+  service_name: "financial-analyzer"
+  exporters:
+    - file:
+        path_settings:
+          path_pattern: "logs/financial_analyzer_traces-{unique_id}.jsonl"
+          unique_id: "timestamp"
+          timestamp_format: "%Y%m%d_%H%M%S"
+    # Remote OTLP exporters can be enabled via --otel-remote-endpoint / FINANCIAL_ANALYZER_OTEL_REMOTE_ENDPOINT
+    # - otlp:
+    #     endpoint: "http://localhost:4318/v1/traces"
+  sample_rate: 1.0
+
+# MCP server configurations
+mcp:
+  servers:
+    # Fetch server for basic web retrieval
+    fetch:
+      command: "mcp-server-fetch"
+    
+    # Google Search MCP server
+    g-search:
+      command: "./bin/g-search-headless.mjs"
+      env:
+        G_SEARCH_FORCE_HEADLESS: "1"
+        PLAYWRIGHT_HEADLESS: "1"
+        NODE_PATH: "/home/cheny0y/.nvm/versions/node/v24.11.1/lib/node_modules"
+        G_SEARCH_GLOBAL_NODE_ROOT: "/home/cheny0y/.nvm/versions/node/v24.11.1/lib/node_modules"
+    
+    # Filesystem server for writing reports
+    filesystem:
+      command: "mcp-server-filesystem"
+      args: ["--root", "."]
+
+    # Optional search MCP servers (uncomment + configure if you prefer non-Google providers)
+    tavily-search:
+      # Tavily hosts a remote MCP endpoint. Keep secrets out of this file by referencing env vars only.
+      command: "npx"
+      args:
+        - "-y"
+        - "mcp-remote"
+        - "https://mcp.tavily.com/mcp/?tavilyApiKey=${TAVILY_API_KEY}"
+
+    bing-search:
+      # Uses the official bing-search-mcp implementation (https://github.com/leehanchung/bing-search-mcp)
+      # The package is installed via requirements.txt and launched with the current Python interpreter.
+      command: "python"
+      args: ["-m", "mcp_server_bing.server"]
+      env:
+        BING_API_KEY: "${BING_API_KEY}"
+
+
+# Default OpenAI configuration
+openai:
+  default_model: gpt-4o-mini
+
+google:
+  default_model: gemini-2.5-flash-lite
+  vertexai: true
+  project: "kaust-pf2023-marco"
+  location: "us-central1"

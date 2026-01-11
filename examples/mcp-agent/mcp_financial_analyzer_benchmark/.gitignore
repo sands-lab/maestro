@@ -1,0 +1,7 @@
+.venv/
+logs/
+__pycache__/
+mcp_agent.secrets.yaml
+.google-service-account.json
+company_data/*
+logs_clean/

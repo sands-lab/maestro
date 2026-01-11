@@ -1,0 +1,14 @@
+[project]
+name = "temporal-workflow-testbench"
+version = "0.1.0"
+description = "Temporal MCP workflow reference with observability hooks for MAS traces."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp-agent",
+    "openai>=1.58",
+    "temporalio>=1.7",
+]
+
+[tool.uv.sources]
+mcp-agent = { git = "https://github.com/chenIshi/mcp-agent", rev = "feat/trace-collection" }

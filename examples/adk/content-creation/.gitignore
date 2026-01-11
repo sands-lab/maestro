@@ -1,0 +1,40 @@
+# Locust results
+locust_*.csv
+locust_*.html
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Experiment results (keep structure, ignore data)
+results/*.csv
+results/*.html
+results/*.jsonl
+!results/.gitkeep
+results
+
+# Plots (keep structure, ignore generated plots)
+plots/*.png
+plots/*.pdf
+plots/*.svg
+plots/*.txt
+!plots/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+*.jsonl
+
+trash

@@ -1,0 +1,75 @@
+[
+  {
+    "trace_id": "<32-hex-trace-id>",
+    "span_id": "<16-hex-span-id>",
+    "parent_span_id": "<16-hex-parent-span-id-or-null>",
+    "name": "<operation-name>",
+    "agent_name": "<agent-name>",
+    "start_time": 0,
+    "end_time": 0,
+    "duration_ns": 0,
+    "kind": "<INTERNAL|SERVER|CLIENT|PRODUCER|CONSUMER>",
+    "status": {
+      "status_code": "<UNSET|OK|ERROR>",
+      "description": "<optional-description>"
+    },
+    "attributes": {
+      "gen_ai.operation.name": "<call_llm|execute_tool|invoke_agent>",
+      "gen_ai.system": "<provider>",
+      "gen_ai.agent.name": "<agent-name>",
+      "gen_ai.agent.description": "<optional-description>",
+      "gen_ai.request.model": "<model>",
+      "gen_ai.conversation.id": "<conversation-id>",
+      "gen_ai.tool.name": "<tool-name>",
+      "gen_ai.tool.type": "<FunctionTool|Builtin>",
+      "gen_ai.tool.call.id": "<tool-call-id>",
+      "gen_ai.tool.description": "<tool-description>",
+      "gen_ai.usage.input_tokens": 0,
+      "gen_ai.usage.output_tokens": 0,
+      "gen_ai.usage.total_tokens": 0,
+      "gen_ai.llm.call.count": 0,
+      "gen_ai.mcp.call.count": 0,
+      "gen_ai.response.finish_reasons": [],
+      "mcp.server": "<server-name>",
+      "mcp.tool": "<tool-name>",
+      "gcp.vertex.agent.llm_request": "<raw-request-json>",
+      "gcp.vertex.agent.llm_response": "<raw-response-json>",
+      "gcp.vertex.agent.tool_call_args": "<tool-call-args>",
+      "gcp.vertex.agent.tool_response": "<tool-response>",
+      "gcp.vertex.agent.invocation_id": "<invocation-id>",
+      "gcp.vertex.agent.session_id": "<session-id>",
+      "gcp.vertex.agent.event_id": "<event-id>",
+      "agent.log": "<optional-log-line>",
+      "communication.input_message_size_bytes": 0,
+      "communication.output_message_size_bytes": 0,
+      "communication.total_message_size_bytes": 0
+    },
+    "communication": {
+      "is_in_process_call": false,
+      "input_message_size_bytes": 0,
+      "output_message_size_bytes": 0,
+      "total_message_size_bytes": 0
+    },
+    "events": [
+      {
+        "name": "<event-name>",
+        "timestamp": 0,
+        "attributes": {
+          "tot.summary": "<step-summary>",
+          "agent.log": "<optional-log>"
+        }
+      }
+    ],
+    "resource": {
+      "attributes": {
+        "service.name": "<service-name>",
+        "service.version": "<semver>",
+        "deployment.environment": "<local|dev|staging|prod>",
+        "telemetry.sdk.name": "<sdk-name>",
+        "telemetry.sdk.language": "<language>",
+        "telemetry.sdk.version": "<version>",
+        "host.name": "<optional-host>"
+      }
+    }
+  }
+]

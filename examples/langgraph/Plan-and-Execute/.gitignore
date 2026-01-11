@@ -1,0 +1,5 @@
+logs/
+metrics/
+.venv/
+__pycache__/
+data/*.json

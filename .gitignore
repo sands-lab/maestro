@@ -1,0 +1,47 @@
+# Ignore compiled python files
+__pycache__/
+*.pyc
+
+# Ignore uv environment files
+.env
+.venv
+
+# Ignore other temporary or system files as needed
+acne/logs
+*.log
+
+agentic-apps
+kagent/
+
+gemini-tiem.json
+
+adk-python
+
+*.jsonl
+!template/*.jsonl
+!**/template/*.jsonl
+
+.vscode/
+
+*.ipynb
+
+*.secrets.yaml
+
+!*.secrets.yaml.example
+
+yxc/
+ghl/
+
+yxc-251224
+.google-service-account.json
+dataset/
+parquet/
+analysis/
+data/*
+!data/example/
+!data/example/run_20251223_020529.otel.jsonl
+
+upload_hf.py
+telemetry*.py
+
+.DS_Store

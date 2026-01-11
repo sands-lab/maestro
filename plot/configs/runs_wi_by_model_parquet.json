@@ -1,0 +1,53 @@
+{
+  "parquet_path": "../../data/parquet/traces.parquet",
+  "inputs": [
+    [
+      "gpt-5-mini",
+      [
+        {"label": "lats", "example_name": "language-agent-tree-search", "model": "gpt-5-mini", "variant": "with-tavily", "color": "#4e79a7"},
+        {"label": "crag", "example_name": "crag", "model": "gpt-5-mini", "variant": "with-tavily", "color": "#e15759"},
+        {"label": "P&E", "example_name": "plan-and-execute", "model": "gpt-5-mini", "variant": "with-tavily", "color": "#76b041"}
+      ]
+    ],
+    [
+      "gpt-5-nano",
+      [
+        {"label": "lats", "example_name": "language-agent-tree-search", "model": "gpt-5-nano", "variant": "with-tavily", "color": "#4e79a7"},
+        {"label": "crag", "example_name": "crag", "model": "gpt-5-nano", "variant": "with-tavily", "color": "#e15759"},
+        {"label": "P&E", "example_name": "plan-and-execute", "model": "gpt-5-nano", "variant": "with-tavily", "color": "#76b041"}
+      ]
+    ],
+    [
+      "gpt-4o-mini",
+      [
+        {"label": "lats", "example_name": "language-agent-tree-search", "model": "gpt-4o-mini", "variant": "with-tavily", "color": "#4e79a7"},
+        {"label": "crag", "example_name": "crag", "model": "gpt-4o-mini", "variant": "with-tavily", "color": "#e15759"},
+        {"label": "P&E", "example_name": "plan-and-execute", "model": "gpt-4o-mini", "variant": "with-tavily", "color": "#76b041"}
+      ]
+    ],
+    [
+      "gemini-2.5-flash",
+      [
+        {"label": "lats", "example_name": "language-agent-tree-search", "model": "gemini-2.5-flash", "variant": "with-tavily", "color": "#4e79a7"},
+        {"label": "crag", "example_name": "crag", "model": "gemini-2.5-flash", "variant": "with-tavily", "color": "#e15759"},
+        {"label": "P&E", "example_name": "plan-and-execute", "model": "gemini-2.5-flash", "variant": "with-tavily", "color": "#76b041"}
+      ]
+    ],
+    [
+      "gemini-2.5-flash-lite",
+      [
+        {"label": "lats", "example_name": "language-agent-tree-search", "model": "gemini-2.5-flash-lite", "variant": "with-tavily", "color": "#4e79a7"},
+        {"label": "crag", "example_name": "crag", "model": "gemini-2.5-flash-lite", "variant": "with-tavily", "color": "#e15759"},
+        {"label": "P&E", "example_name": "plan-and-execute", "model": "gemini-2.5-flash-lite", "variant": "with-tavily", "color": "#76b041"}
+      ]
+    ],
+    [
+      "gemini-2.0-flash-lite",
+      [
+        {"label": "lats", "example_name": "language-agent-tree-search", "model": "gemini-2.0-flash-lite", "variant": "with-tavily", "color": "#4e79a7"},
+        {"label": "crag", "example_name": "crag", "model": "gemini-2.0-flash-lite", "variant": "with-tavily", "color": "#e15759"},
+        {"label": "P&E", "example_name": "plan-and-execute", "model": "gemini-2.0-flash-lite", "variant": "with-tavily", "color": "#76b041"}
+      ]
+    ]
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "coordinator-agent",
+  "description": "Host UI and coordinator that routes content creation tasks to planner, writer, and editor agents.",
+  "url": "http://localhost:8080",
+  "version": "1.0.0",
+  "defaultInputModes": ["text", "text/plain"],
+  "defaultOutputModes": ["text", "text/plain"],
+  "capabilities": {
+    "streaming": true
+  },
+  "skills": [
+    {
+      "id": "content_creation_host",
+      "name": "Route content creation tasks",
+      "description": "Determines which specialized agent to call for planning, writing, and editing.",
+      "tags": ["route", "coordinate", "host"],
+      "examples": [
+        "Create content about learning Java using planner, writer, and editor"
+      ]
+    }
+  ]
+}

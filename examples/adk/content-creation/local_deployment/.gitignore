@@ -1,0 +1,6 @@
+# Local deployment runtime files
+.env
+logs/
+pids/
+*.pid
+*.log
