@@ -25,7 +25,7 @@ For example-specific instructions, click the links in the table below to open ea
 
 | Example | App. Field | Framework | Int. Type | #Agents | #Tools | Data In | Data Out |
 |:-------:|:---------:|:---------:|:---------:|:-------:|:------:|:-------:|:--------:|
-| [Fin. Analyzer](./examples/mcp-agent/financial_analyzer) | Finance | MCP-Agent | Correct | 6 | 1 | Artifacts | Opn-End |
+| [Fin. Analyzer](./examples/mcp-agent/mcp_financial_analyzer_benchmark) | Finance | MCP-Agent | Correct | 6 | 1 | Artifacts | Opn-End |
 | [Img. Scr.](./examples/adk/image-scoring) | Creativity | ADK | Debate | 4 | 2 | Artifacts | Cls-Form |
 | [Marketing](./examples/adk/marketing-agency) | Marketing | ADK | Coord. | 4 | 1 | Artifacts | Opn-End |
 | [Brand SEO](./examples/adk/brand-search-optimization) | Marketing | ADK | Coord. | 4 | 10 | Artifacts | Opn-End |
