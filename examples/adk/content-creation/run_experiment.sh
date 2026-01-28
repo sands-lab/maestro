@@ -235,20 +235,20 @@ run_local() {
     echo ">>> Generating $INPUT_COUNT random inputs at $INPUT_FILE"
     generate_inputs "$INPUT_FILE" "$INPUT_COUNT"
   fi
-  
+
   for i in $(seq 1 $ITERATIONS); do
       echo ""
       echo ">>> [local] Run $i/$ITERATIONS"
-      
+
       # Cleanup previous run
       cleanup_local
-      
+
       # Generate unified timestamp for this run (all agents will use the same timestamp)
       # This ensures files from the same run can be grouped accurately without time windows
       UNIFIED_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
       export OTEL_RUN_TIMESTAMP="$UNIFIED_TIMESTAMP"
       echo ">>> Using unified timestamp for this run: $UNIFIED_TIMESTAMP"
-      
+
       # Clear old traces/metrics from agent directories only (not from root)
       # This ensures each run starts fresh in agent directories, but root directories accumulate
       # The root traces/ and metrics/ directories accumulate all runs for analysis
@@ -265,13 +265,13 @@ run_local() {
           rm -f "$agent_dir/metrics"/*.jsonl 2>/dev/null || true
         fi
       done
-      
+
       # Start agents (OTEL_RUN_TIMESTAMP will be passed via environment)
       (cd "$SCRIPT_DIR/local_deployment" && ./start_local_agents.sh)
-      
+
       local coord_port
       coord_port=$(get_env_var "COORDINATOR_PORT" "8093")
-      
+
       # Health check loop
       echo ">>> Waiting for coordinator to be ready on port $coord_port..."
       for retry in {1..30}; do
@@ -282,7 +282,7 @@ run_local() {
         echo ">>> Waiting for coordinator... ($retry/30)"
         sleep 2
       done
-      
+
       # Send request
       echo ">>> Sending request..."
       local run_message
@@ -297,18 +297,18 @@ run_local() {
       else
         echo ">>> ✗ Run $i failed (check $result_file)"
       fi
-      
+
       # Collect traces and metrics
       echo ">>> Collecting traces and metrics..."
       local_run_dir="$EXP_DIR/run_${i}_data"
       mkdir -p "$local_run_dir"
-      
+
       # Copy traces and metrics to project root (like marketing-agency)
       # This allows direct analysis from project root without going into subdirectories
       unified_traces_dir="$SCRIPT_DIR/traces"
       unified_metrics_dir="$SCRIPT_DIR/metrics"
       mkdir -p "$unified_traces_dir" "$unified_metrics_dir"
-      
+
       # Copy traces and metrics from all agents (both to run-specific dir and unified dir)
       for agent_dir in \
         "$SCRIPT_DIR/src/agents/content_planner" \
@@ -316,7 +316,7 @@ run_local() {
         "$SCRIPT_DIR/src/agents/content_editor" \
         "$SCRIPT_DIR/src/hosts/coordinator"; do
         agent_name=$(basename "$agent_dir")
-        
+
         # Copy to run-specific directory
         if [[ -d "$agent_dir/traces" ]]; then
           cp -r "$agent_dir/traces" "$local_run_dir/${agent_name}_traces" 2>/dev/null || true
@@ -324,7 +324,7 @@ run_local() {
         if [[ -d "$agent_dir/metrics" ]]; then
           cp -r "$agent_dir/metrics" "$local_run_dir/${agent_name}_metrics" 2>/dev/null || true
         fi
-        
+
         # Copy to unified directories for visualization
         if [[ -d "$agent_dir/traces" ]]; then
           cp "$agent_dir/traces"/*.jsonl "$unified_traces_dir/" 2>/dev/null || true
@@ -333,18 +333,18 @@ run_local() {
           cp "$agent_dir/metrics"/*.jsonl "$unified_metrics_dir/" 2>/dev/null || true
         fi
       done
-      
+
       # Note: Root traces and metrics are already copied from agent directories above
       # No need to copy again from root directories to avoid duplication
-      
+
       # Move logs
       if [ -d "$SCRIPT_DIR/local_deployment/logs" ]; then
         mkdir -p "$local_run_dir/logs"
         mv "$SCRIPT_DIR/local_deployment/logs/"* "$local_run_dir/logs/" 2>/dev/null || true
       fi
-      
+
       cleanup_local
-      
+
       if [[ $i -lt $ITERATIONS ]]; then
         echo ">>> Waiting 5 seconds before next run..."
         sleep 5

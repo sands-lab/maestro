@@ -33,7 +33,7 @@ The generated report is as follows:
 
 ## Executive Summary
 **Current Price:** $456.23 (+$1.45, +0.32% today)
-**Market Cap:** $67.806 billion  
+**Market Cap:** $67.806 billion
 **Investment Thesis:** Quanta Services exhibits robust operational performance and strategic positioning within high-growth critical infrastructure sectors, consistently surpassing earnings expectations. Despite trading near its 52-week high, the company's strong fundamentals and favorable industry tailwinds provide a compelling long-term investment case.
 **Recommendation:** Buy (Medium Confidence)
 
@@ -44,7 +44,7 @@ The generated report is as follows:
 ### Trading Metrics
 - **Stock Price:** $456.23 (+$1.45, +0.32% today)
 - **Trading Volume:** 831,625 shares (vs 1.04 million avg)
-- **52-Week Range:** $227.08 - $469.43  
+- **52-Week Range:** $227.08 - $469.43
 - **Current Position:** 94.55% of 52-week range
 - **Market Capitalization:** $67.806 billion
 
@@ -87,7 +87,7 @@ Recent analyst activity, as suggested by news headlines like "Is Quanta Services
 2.  **Strategic Market Positioning in High-Growth Sectors:** Quanta Services operates in critical infrastructure sectors such as power grid modernization, renewable energy integration, and communication network expansion. These sectors are experiencing significant long-term tailwinds driven by government initiatives, climate change concerns, and increasing digital connectivity demands. The company's focus on these areas positions it to capitalize on sustained capital expenditure cycles, ensuring a strong project pipeline and revenue visibility. (Source: Implied by market sentiment and general industry knowledge)
 3.  **Strong Price Momentum and Investor Confidence:** The stock's current trading price of $456.23, near its 52-week high of $469.43, reflects significant investor confidence and strong upward price momentum over the past year. News reports highlighting a 1.4% gain in 3 days across multiple financial sources further reinforce this positive trend. This momentum suggests that the market views Quanta Services favorably, potentially attracting further investment and supporting its valuation. (Source: Yahoo Finance, Zacks, NASDAQ)
 
-### Bear Case - Key Concerns  
+### Bear Case - Key Concerns
 1.  **Elevated Valuation Near 52-Week High:** Trading at $456.23, very close to its 52-week high of $469.43, the stock's valuation may be considered stretched. This proximity to its peak suggests that much of the company's positive news and future growth potential might already be fully priced into the stock. While performance has been strong, a high valuation can limit significant near-term upside potential and increase the stock's vulnerability to any negative news or broader market downturns. (Source: Yahoo Finance - 52-Week Range)
 2.  **Sensitivity to Economic and Infrastructure Spending Fluctuations:** Quanta Services' business is heavily reliant on capital expenditures in infrastructure, making it inherently sensitive to economic cycles, government policy changes, and interest rate movements. A significant economic downturn, reduced public or private infrastructure spending, or rising borrowing costs for clients could lead to project delays, cancellations, or reduced demand, directly impacting the company's revenue and profitability. (Source: General industry risk for infrastructure services)
 3.  **Sub-Average Trading Volume on Recent Gains:** The recent price increase, while positive, occurred on lower-than-average trading volume (831,625 shares vs. 1.04 million average). This disparity could indicate a lack of strong conviction or broad market participation behind the recent rally. Lower volume during price appreciation might suggest that the move is not as robust or sustainable, potentially making the stock more susceptible to profit-taking or sharper declines if negative sentiment emerges. (Source: Yahoo Finance)
@@ -104,7 +104,7 @@ Quanta Services is currently valued near its 52-week high, indicating that the m
 - **Customer Concentration/Contract Risk:** While not specified, a significant portion of revenue could be tied to a few large clients or government contracts. Loss of a major client or changes in terms of large contracts could severely impact financial performance.
 - **Integration Risk (Acquisitions):** Quanta Services has grown through acquisitions. Failed integration of acquired companies, including cultural clashes, technology incompatibilities, or inability to realize synergies, could pose a risk to financial and operational performance.
 
-### Market & Sector Risks  
+### Market & Sector Risks
 - **Economic Downturns:** As an infrastructure services provider, Quanta Services is highly susceptible to broader economic conditions. A recession or significant slowdown could lead to reduced capital spending by utility companies, governments, and other clients, thereby decreasing demand for Quanta's services.
 - **Regulatory and Environmental Risks:** Changes in environmental regulations, permitting processes, or industry standards could increase project costs, delay approvals, or limit the scope of potential projects. Increased scrutiny on infrastructure projects could also impact the business.
 - **Interest Rate Sensitivity:** Rising interest rates can increase the cost of capital for Quanta's clients, potentially deterring new project investments and slowing down infrastructure development, thereby impacting Quanta's revenue pipeline.

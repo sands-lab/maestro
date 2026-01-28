@@ -46,7 +46,7 @@ async def generate_images(imagen_prompt: str, tool_context: ToolContext):
                 )
 
                 await tool_context.save_artifact(artifact_name, report_artifact)
-                
+
                 # Save locally for user visibility
                 with open(artifact_name, "wb") as f:
                     f.write(image_bytes)

@@ -22,12 +22,12 @@ def send_request(
     timeout: float = 300.0,
 ) -> dict:
     """Send a request to the coordinator.
-    
+
     Args:
         message: Message content to send
         coordinator_url: Coordinator URL
         timeout: Request timeout in seconds
-        
+
     Returns:
         Response data dictionary
     """
@@ -50,11 +50,11 @@ def send_request(
             }
         }
     }
-    
+
     print(f"Sending request to: {coordinator_url}")
     print(f"Message: {message}")
     print("-" * 60)
-    
+
     try:
         with httpx.Client(timeout=timeout) as client:
             response = client.post(
@@ -62,26 +62,26 @@ def send_request(
                 json=payload,
                 headers={"Content-Type": "application/json"}
             )
-            
+
             print(f"HTTP status code: {response.status_code}")
-            
+
             if response.status_code != 200:
                 print(f"Error response: {response.text}")
                 return {"error": f"HTTP {response.status_code}", "detail": response.text}
-            
+
             data = response.json()
-            
+
             # Check JSON-RPC response
             if "error" in data:
                 print(f"JSON-RPC error: {data['error']}")
                 return data
-            
+
             if "result" in data:
                 print("✓ Request successful")
-                
+
                 # Try to extract response content
                 result = data.get("result", {})
-                
+
                 # Check for message
                 message_data = result.get("message", {})
                 if message_data:
@@ -90,7 +90,7 @@ def send_request(
                         if part.get("kind") == "text":
                             # Show full text without truncation
                             print(f"\nResponse message: {part.get('text', '')}")
-                
+
                 # Check for artifacts
                 artifacts = result.get("artifacts", [])
                 if artifacts:
@@ -107,7 +107,7 @@ def send_request(
                                     print(f"    {text}")
                                 else:
                                     print(f"    (empty)")
-                
+
                 # Also check history for any agent messages with content
                 history = result.get("history", [])
                 if history:
@@ -121,12 +121,12 @@ def send_request(
                                 if text and len(text) > 20:  # Only show substantial messages
                                     # Show full text without truncation
                                     print(f"  [{i}] {role}: {text}")
-                
+
                 return data
             else:
                 print(f"Unknown response format: {data}")
                 return data
-                
+
     except httpx.TimeoutException:
         print(f"✗ Request timeout (exceeded {timeout} seconds)")
         return {"error": "timeout"}
@@ -148,69 +148,69 @@ def main():
 Examples:
   # Use default message
   python send_request.py
-  
+
   # Custom message
   python send_request.py "Create a blog post about Python"
-  
+
   # Specify coordinator URL
   python send_request.py --coordinator http://localhost:8093 --message "Your message"
-  
+
   # Display full JSON response
   python send_request.py --message "Your message" --json
         """
     )
-    
+
     parser.add_argument(
         "message",
         nargs="?",
         default="Create a LinkedIn post about getting started with the Agent2Agent protocol",
         help="Message to send (default: LinkedIn post request)."
     )
-    
+
     parser.add_argument(
         "--coordinator",
         default="http://localhost:8093",
         help="Coordinator URL (default: http://localhost:8093)"
     )
-    
+
     parser.add_argument(
         "--message",
         dest="message_opt",
         help="Specify message via --message argument (overrides positional argument)"
     )
-    
+
     parser.add_argument(
         "--timeout",
         type=float,
         default=300.0,
         help="Request timeout in seconds (default: 300)"
     )
-    
+
     parser.add_argument(
         "--json",
         action="store_true",
         help="Output full response in JSON format"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Prefer --message argument
     message = args.message_opt if args.message_opt else args.message
-    
+
     # Send request
     result = send_request(
         message=message,
         coordinator_url=args.coordinator,
         timeout=args.timeout
     )
-    
+
     # If JSON output is needed
     if args.json:
         print("\n" + "=" * 60)
         print("Full JSON Response:")
         print("=" * 60)
         print(json.dumps(result, indent=2, ensure_ascii=False))
-    
+
     # Return appropriate exit code
     if "error" in result:
         sys.exit(1)

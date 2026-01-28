@@ -33,27 +33,27 @@ def _convert_metrics(metrics_dict):
         return_list.append(cpu_utilization_list[i])
         return_list.append(memory_usage_list[i])
     return return_list
-    
+
 def _check_traces(traces_list):
     return_dict = {}
     for trace in traces_list:
         attributes = trace['attributes']
         for k in attributes.keys():
-            if k == 'gen_ai.request.reasoning_effort': 
+            if k == 'gen_ai.request.reasoning_effort':
                 return_dict[k] = []
                 continue
             if k not in return_dict:
                 return_dict[k] = [attributes[k]]
             else:
                 return_dict[k].append(attributes[k])
-                
+
         for k in return_dict.keys():
             try:
                 return_dict[k] = list(set(return_dict[k]))
             except Exception:
                 print(k)
     return return_dict
-    
+
 def _convert_traces(traces_list):
     for trace in traces_list:
         attributes: dict = trace['attributes']
@@ -63,28 +63,28 @@ def _convert_traces(traces_list):
             attributes['gen_ai.operation.name'] = 'call_llm'
             attributes['gen_ai.llm.call.count'] = 1
             attributes['gen_ai.usage.total_tokens'] = attributes.pop('llm.usage.total_tokens', 0)
-            
+
         if 'gen_ai.operation.name' in attributes and attributes['gen_ai.operation.name'] == 'execute_tool':
             if 'tool.name' in attributes:
                 attributes['gen_ai.tool.type'] = 'FunctionTool'
             else:
                 attributes['gen_ai.tool.type'] = 'Builtin'
-                
+
         if 'gen_ai.completion.0.tool_calls.0.name' in attributes:
             attributes['gen_ai.operation.name'] = 'execute_tool'
             attributes['gen_ai.tool.type'] = 'Builtin'
             attributes['gen_ai.tool.name'] = attributes.pop('gen_ai.completion.0.tool_calls.0.name', '')
-        
+
         if 'communication' in trace:
             communication = trace['communication']
             attributes['communication.input_message_size_bytes']=communication.get('input_message_size_bytes', 0)
             attributes['communication.output_message_size_bytes']=communication.get('output_message_size_bytes', 0)
             attributes['communication.total_message_size_bytes']=communication.get('total_message_size_bytes', 0)
             trace.pop('communication', None)
-    
+
     return traces_list
-            
-    
+
+
 def convert_metrics(dir):
     for root, dirs, files in os.walk(dir + "/metrics"):
         for file in files:
@@ -92,7 +92,7 @@ def convert_metrics(dir):
             converted_metrics = _convert_metrics(metrics_dict)
             if not os.path.exists(dir + "/converted_metric"):
                 os.makedirs(dir + "/converted_metric")
-            
+
             with open(os.path.join(dir + "/converted_metric", file), "w") as f:
                 for metric in converted_metrics:
                     f.write(json.dumps(metric) + "\n")
@@ -109,7 +109,7 @@ def convert_traces(dir, is_check=False):
                 converted_traces = _convert_traces(traces_list)
                 if not os.path.exists(dir + "/converted_traces"):
                     os.makedirs(dir + "/converted_traces")
-                    
+
                 with open(os.path.join(dir + "/converted_traces", file), "w") as f:
                     for trace in converted_traces:
                         f.write(json.dumps(trace) + "\n")

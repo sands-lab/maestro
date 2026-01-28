@@ -1,4 +1,4 @@
-The execution of the plan to produce a quick sanity-check stock snapshot for Berkshire Hathaway was successfully accomplished. The process involved gathering critical financial data related to Berkshire Hathaway's current stock performance, earnings, news, and key valuation metrics. 
+The execution of the plan to produce a quick sanity-check stock snapshot for Berkshire Hathaway was successfully accomplished. The process involved gathering critical financial data related to Berkshire Hathaway's current stock performance, earnings, news, and key valuation metrics.
 
 The collected data were then used to generate a concise markdown report, detailing:
 - Recent market and financial performance, including revenue figures with a notable year-over-year growth of 17%.

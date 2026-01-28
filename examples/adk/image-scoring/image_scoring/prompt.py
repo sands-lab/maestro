@@ -1,5 +1,5 @@
 CHECKER_PROMPT = """
-You are an agent to evaluate the quality of image based on the total_score of the image 
+You are an agent to evaluate the quality of image based on the total_score of the image
 generation.
 
 1. Invoke the `image_generation_scoring_agent` first to generate images and score the images.

@@ -17,37 +17,37 @@ fi
 stop_process() {
     local name=$1
     local pid_file="$PID_DIR/${name}.pid"
-    
+
     if [ ! -f "$pid_file" ]; then
         echo "  $name: No PID file found (already stopped?)"
         return
     fi
-    
+
     local pid=$(cat "$pid_file")
-    
+
     if ! kill -0 $pid 2>/dev/null; then
         echo "  $name: Process $pid not running (stale PID file)"
         rm -f "$pid_file"
         return
     fi
-    
+
     echo "  $name: Stopping PID $pid..."
     kill $pid 2>/dev/null || true
-    
+
     # Wait up to 5 seconds for graceful shutdown
     local count=0
     while kill -0 $pid 2>/dev/null && [ $count -lt 50 ]; do
         sleep 0.1
         count=$((count + 1))
     done
-    
+
     # Force kill if still running
     if kill -0 $pid 2>/dev/null; then
         echo "  $name: Force killing..."
         kill -9 $pid 2>/dev/null || true
         sleep 0.5
     fi
-    
+
     rm -f "$pid_file"
     echo "  $name: ✓ Stopped"
 }

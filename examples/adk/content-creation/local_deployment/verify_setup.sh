@@ -14,7 +14,7 @@ echo "1. Checking Python modules..."
 check_module() {
     local dir=$1
     local module=$2
-    
+
     cd "$dir"
     if python -c "import $module" 2>/dev/null; then
         echo "  ✓ $module importable"
@@ -39,7 +39,7 @@ echo "2. Checking port availability..."
 check_port() {
     local port=$1
     local name=$2
-    
+
     if lsof -i :$port > /dev/null 2>&1; then
         echo "  ✗ Port $port ($name) already in use"
         echo "    Kill with: lsof -ti :$port | xargs kill"

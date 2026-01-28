@@ -23,7 +23,7 @@ from .sub_agents.logo_create import logo_create_agent
 from .sub_agents.marketing_create import marketing_create_agent
 from .sub_agents.website_create import website_create_agent
 
-MODEL = "gemini-2.5-pro" 
+MODEL = "gemini-2.5-pro"
 
 marketing_coordinator = LlmAgent(
     name="marketing_coordinator",

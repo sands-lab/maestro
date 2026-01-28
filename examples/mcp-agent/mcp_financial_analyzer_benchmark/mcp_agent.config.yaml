@@ -26,7 +26,7 @@ mcp:
     # Fetch server for basic web retrieval
     fetch:
       command: "mcp-server-fetch"
-    
+
     # Google Search MCP server
     g-search:
       command: "./bin/g-search-headless.mjs"
@@ -35,7 +35,7 @@ mcp:
         PLAYWRIGHT_HEADLESS: "1"
         NODE_PATH: "/home/cheny0y/.nvm/versions/node/v24.11.1/lib/node_modules"
         G_SEARCH_GLOBAL_NODE_ROOT: "/home/cheny0y/.nvm/versions/node/v24.11.1/lib/node_modules"
-    
+
     # Filesystem server for writing reports
     filesystem:
       command: "mcp-server-filesystem"

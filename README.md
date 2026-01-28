@@ -128,13 +128,13 @@ If you find MAESTRO or its dataset useful in your research, please consider citi
 
 ```
 @misc{maestro,
-      title={MAESTRO: Multi-Agent Evaluation Suite for Testing, Reliability, and Observability}, 
+      title={MAESTRO: Multi-Agent Evaluation Suite for Testing, Reliability, and Observability},
       author={Tie Ma and Yixi Chen and Vaastav Anand and Alessandro Cornacchia and Amândio R. Faustino and Guanheng Liu and Shan Zhang and Hongbin Luo and Suhaib A. Fahmy and Zafar A. Qazi and Marco Canini},
       year={2026},
       eprint={2601.00481},
       archivePrefix={arXiv},
       primaryClass={cs.NI},
-      url={https://arxiv.org/abs/2601.00481}, 
+      url={https://arxiv.org/abs/2601.00481},
 }
 ```
 
@@ -158,3 +158,13 @@ If you find MAESTRO or its dataset useful in your research, please consider citi
 10. [Testing and Enhancing Multi-Agent Systems for Robust Code Generation](https://arxiv.org/html/2510.10460)
 11. [Evaluating Variance in Visual Question Answering Benchmarks](https://arxiv.org/html/2508.02645)
 -->
+
+
+## Developing MAESTRO
+```bash
+git clone git@github.com:sands-lab/maestro.git
+cd maestro
+uv sync
+# Install pre-commit hooks
+uv run -- pre-commit install
+```

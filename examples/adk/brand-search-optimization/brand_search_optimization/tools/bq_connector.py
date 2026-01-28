@@ -44,7 +44,7 @@ def get_product_details_for_brand(tool_context: ToolContext):
         '| Title | Description | Attributes | Brand |\\n|---|---|---|---|\\n| Nike Air Max | Comfortable running shoes | Size: 10, Color: Blue | Nike\\n| Nike Sportswear T-Shirt | Cotton blend, short sleeve | Size: L, Color: Black | Nike\\n| Nike Pro Training Shorts | Moisture-wicking fabric | Size: M, Color: Gray | Nike\\n'
     """
     brand = tool_context.user_content.parts[0].text
-    
+
     # --- MOCK IMPLEMENTATION START ---
     print(f"DEBUG: Mocking BigQuery result for brand: {brand}")
     return f'''| Title | Description | Attributes | Brand |

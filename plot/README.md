@@ -10,7 +10,7 @@ Paths below are relative to that directory. Install dependencies from `requireme
 
 ## Data download
 
-Figures in our paper can be reproduced using our public dataset on HuggingFace, which 
+Figures in our paper can be reproduced using our public dataset on HuggingFace, which
 is available at: https://huggingface.co/datasets/kaust-generative-ai/maestro-mas-benchmark.
 
 Before running any plotting scripts, in this directory, run:

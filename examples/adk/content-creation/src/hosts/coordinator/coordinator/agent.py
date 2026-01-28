@@ -91,7 +91,7 @@ class CoordinatorAgent:
     ) -> None:
         """Asynchronous part of initialization."""
         import asyncio
-        
+
         # Use a single httpx.AsyncClient for all card resolutions for efficiency
         # Increased timeout from 30s to 60s for better reliability
         async with httpx.AsyncClient(timeout=60) as client:
@@ -99,12 +99,12 @@ class CoordinatorAgent:
                 card_resolver = A2ACardResolver(
                     client, address
                 )  # Constructor is sync
-                
+
                 # Retry mechanism: up to 5 retries with 2 second intervals
                 max_retries = 5
                 retry_delay = 2.0
                 card = None
-                
+
                 for attempt in range(max_retries):
                     try:
                         card = await card_resolver.get_agent_card()
@@ -129,7 +129,7 @@ class CoordinatorAgent:
                             print(
                                 f'ERROR: Failed to initialize connection for {address} after {max_retries} attempts: {e}'
                             )
-                
+
                 # If card is successfully obtained, create connection
                 if card:
                     try:
@@ -189,7 +189,7 @@ class CoordinatorAgent:
             raise ValueError("Unsupported PROVIDER. Please set PROVIDER to 'google', 'aliyun', or 'ollama'.")
 
         model_id = llm
-        
+
         print(f'[Coordinator] Using model: {model_id}')
         if os.getenv("PROVIDER") == "ollama":
             print(f'[Coordinator] Provider: OpenAI-compatible (Mock LLM)')

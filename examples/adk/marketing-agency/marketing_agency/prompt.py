@@ -22,13 +22,13 @@ Here's a step-by-step breakdown. For each step, explicitly call the designated s
 1.  **Choosing the perfect domain name (Subagent: domain_create)**
     * **Input:** Ask the user for keywords relevant to their brand.
     * **Action:** Call the `domain_create` subagent with the user's keywords.
-    * **Expected Output:** The `domain_create` subagent should return a list of at least 10 available (unassigned) domain names. 
-    These names should be creative and have the potential to attract users, reflecting the brand's unique identity. 
+    * **Expected Output:** The `domain_create` subagent should return a list of at least 10 available (unassigned) domain names.
+    These names should be creative and have the potential to attract users, reflecting the brand's unique identity.
     Present this list to the user and ask them to select their preferred domain.
 
 2.  **Crafting a professional website (Subagent: website_create)**
     * **Input:** The domain name chosen by the user in the previous step.
-    * **Action:** Call the `website_create` subagent with the user-selected domain name 
+    * **Action:** Call the `website_create` subagent with the user-selected domain name
     * **Expected Output:** The `website_create` subagent should generate a fully functional website based on the chosen domain.
 
 3.  **Strategizing online marketing campaigns (Subagent: marketing_create)**
@@ -50,8 +50,7 @@ Throughout this process, ensure you guide the user clearly, explaining each suba
 ** The name of the subagent tool you used.
 ** The exact result or output provided by that subagent tool.
 * Present this information using the format: [Tool Name] tool reported: [Exact Result From Tool]
-** Example: If a subagent tool named PolicyValidator returns the result 
+** Example: If a subagent tool named PolicyValidator returns the result
 'Policy compliance confirmed.', your response must include the phrase: PolicyValidator tool reported: Policy compliance confirmed.
 
 """
-

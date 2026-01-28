@@ -71,7 +71,7 @@ logger = logging.getLogger(__name__)
 
 class ADKAgentExecutor(AgentExecutor):
     """Executor that wraps Google ADK Agent for A2A protocol"""
-    
+
     def __init__(
         self,
         agent,
@@ -113,7 +113,7 @@ class ADKAgentExecutor(AgentExecutor):
     ) -> None:
         from a2a.utils import new_task
         from google.genai import types
-        
+
         query = context.get_user_input()
         task = context.current_task or new_task(context.message)
         await event_queue.enqueue_event(task)
@@ -166,7 +166,7 @@ class ADKAgentExecutor(AgentExecutor):
                                         resp_data = response_content
                                 else:
                                     resp_data = func_resp
-                                
+
                                 # Handle case where resp_data might be a string representation
                                 if isinstance(resp_data, str):
                                     # Try to extract #IamEditor from string representation
@@ -188,7 +188,7 @@ class ADKAgentExecutor(AgentExecutor):
                                             if matches:
                                                 text_matches.extend(matches)
                                                 break
-                                        
+
                                         if not text_matches:
                                             # Fallback: find #IamEditor and extract surrounding text
                                             iam_pos = resp_data.find('#IamEditor')
@@ -201,7 +201,7 @@ class ADKAgentExecutor(AgentExecutor):
                                                     if matches:
                                                         start_pos = matches[-1].end()
                                                         break
-                                                
+
                                                 if start_pos > 0:
                                                     # Look forward for closing quote or end
                                                     end_pos = resp_data.find("'", iam_pos)
@@ -211,10 +211,10 @@ class ADKAgentExecutor(AgentExecutor):
                                                         end_pos = resp_data.find('\\n', iam_pos)
                                                     if end_pos == -1:
                                                         end_pos = len(resp_data)
-                                                    
+
                                                     text_match = resp_data[start_pos:end_pos]
                                                     text_matches.append(text_match)
-                                        
+
                                         if text_matches:
                                             # Use the last match (should be the final editor response)
                                             for match in reversed(text_matches):
@@ -224,7 +224,7 @@ class ADKAgentExecutor(AgentExecutor):
                                                     response_text = text
                                                     logger.info(f"Extracted text with #IamEditor from string representation (length: {len(text)})")
                                                     break
-                                
+
                                 # Extract text from Task.artifacts (object format)
                                 if hasattr(resp_data, "artifacts"):
                                     artifacts = resp_data.artifacts
@@ -239,7 +239,7 @@ class ADKAgentExecutor(AgentExecutor):
                                                             text = art_part.root.text
                                                         elif hasattr(art_part, "text"):
                                                             text = art_part.text
-                                                        
+
                                                         if text and isinstance(text, str):
                                                             # If contains #IamEditor, use it as final response
                                                             if "#IamEditor" in text:
@@ -256,7 +256,7 @@ class ADKAgentExecutor(AgentExecutor):
                                 logger.warning(f"Error extracting function response: {e}", exc_info=True)
                         elif hasattr(part, "function_call"):
                             pass  # Function calls are handled internally by ADK
-                
+
                 # Also check final response
                 if event.is_final_response() and event.content and event.content.parts:
                     for part in event.content.parts:
@@ -286,9 +286,9 @@ class ADKAgentExecutor(AgentExecutor):
 @click.option('--port', default=8093, help='Port to bind to')
 def main(host: str, port: int):
     """Start the Coordinator API server"""
-    
+
     logger.info(f"Starting Coordinator API server on {host}:{port}")
-    
+
     # Create agent card
     agent_card = AgentCard(
         name='Coordinator Agent',
@@ -309,30 +309,30 @@ def main(host: str, port: int):
             ),
         ],
     )
-    
+
     # Create task store and executor
     task_store = InMemoryTaskStore()
     agent_executor = ADKAgentExecutor(
         agent=coordinator,
     )
-    
+
     # Create request handler
     request_handler = DefaultRequestHandler(
         agent_executor=agent_executor,
         task_store=task_store,
     )
-    
+
     # Create A2A application
     app = A2AStarletteApplication(
         agent_card=agent_card,
         http_handler=request_handler,
     )
-    
+
     # Build the ASGI app
     asgi_app = app.build()
-    
+
     logger.info(f"Coordinator API server ready at http://{host}:{port}")
-    
+
     # Run server with the ASGI app
     uvicorn.run(
         asgi_app,

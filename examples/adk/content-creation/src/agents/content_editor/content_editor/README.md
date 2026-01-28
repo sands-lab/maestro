@@ -14,4 +14,3 @@ Given a high-level description of the content that's needed, this sample agent c
 ```bash
 docker build -t a2a/content_editor .
 ```
-

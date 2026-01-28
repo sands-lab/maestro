@@ -2,9 +2,9 @@ import datetime, uuid
 from zoneinfo import ZoneInfo
 import os
 import google.auth
-from .sub_agents.prompt import image_generation_prompt_agent 
-from .sub_agents.image import image_generation_agent 
-from .sub_agents.scoring import scoring_images_prompt 
+from .sub_agents.prompt import image_generation_prompt_agent
+from .sub_agents.image import image_generation_agent
+from .sub_agents.scoring import scoring_images_prompt
 from .checker_agent import checker_agent_instance
 from google.adk.agents import SequentialAgent, LoopAgent
 from google.adk.agents.callback_context import CallbackContext

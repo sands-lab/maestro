@@ -24,11 +24,11 @@ The key features of the Image Scoring Agent include:
 | **Components**  | Tools: Imagen, Image Evaluation Tools |
 | **Vertical**  | Horizontal |
 
-### Agent architecture:  
+### Agent architecture:
 
-This diagram shows the detailed architecture of the agents and tools used to implement this workflow.  
+This diagram shows the detailed architecture of the agents and tools used to implement this workflow.
 
-<img src="image_scoring_architecture.png" alt="Image Scoring Architecture" width="800"/>  
+<img src="image_scoring_architecture.png" alt="Image Scoring Architecture" width="800"/>
 
 
 ## Setup and Installation
@@ -68,7 +68,7 @@ This diagram shows the detailed architecture of the agents and tools used to imp
             with the values appropriate to your project, and save it as `.env`. The values
             in this file will be read into the environment of your application.
 
-       
+
     *   Authenticate your GCloud account.
 
         ```bash
@@ -101,7 +101,7 @@ adk web
 The command `adk web` will start a web server on your machine and print the URL.
 You may open the URL, select "image_scoring" in the top-left drop-down menu, and
 a chatbot interface will appear on the right. The conversation is initially
-blank. 
+blank.
 
 
 ### Using Agent Starter Pack
@@ -154,7 +154,7 @@ The Image Scoring Agent can be customized to better suit your requirements. For 
 1.  **Policy Customization:** Modify the policy evaluation criteria to match your specific requirements and standards.
 2.  **Image Generation Parameters:** Adjust the Imagen parameters to control image generation quality and characteristics.
 3.  **Evaluation Metrics:** Add or modify evaluation metrics to assess different aspects of the generated images.
-4.  **Iteration Strategy:** Customize the iteration process to optimize for specific aspects of image quality or policy compliance. 
+4.  **Iteration Strategy:** Customize the iteration process to optimize for specific aspects of image quality or policy compliance.
 
 ## Sub-Agents and Workflow
 

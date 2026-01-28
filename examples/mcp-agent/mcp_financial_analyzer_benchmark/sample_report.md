@@ -4,7 +4,7 @@
 
 ## Executive Summary
 **Current Price:** $360.67 (±$17.54, ±4.7% today)
-**Market Cap:** $16.62 billion  
+**Market Cap:** $16.62 billion
 **Investment Thesis:** Duolingo presents a compelling growth potential with strong revenue and earnings performance, driven by increased user engagement and product diversification. However, its high P/E ratio indicates significant growth expectations already priced in, warranting careful consideration.
 **Recommendation:** Cautious optimism given high market valuation, with a Medium confidence level due to strong financials balanced by valuation concerns.
 
@@ -15,7 +15,7 @@
 ### Trading Metrics
 - **Stock Price:** $360.67 (±$17.54, ±4.7% today)
 - **Trading Volume:** 829.02K shares (vs 841.06K avg)
-- **52-Week Range:** $145.05 - $544.93  
+- **52-Week Range:** $145.05 - $544.93
 - **Current Position:** 66% of 52-week range
 - **Market Capitalization:** $16.62 billion
 
@@ -57,7 +57,7 @@ Recent analyst downgrade has impacted Duolingo's stock, but buoyant earnings and
 2. **Expanding User Base:** Continued growth in user engagement and monetization suggests a sustained revenue trajectory.
 3. **Strong Financial Health:** Low debt-to-equity ratio of 0.06 underscores financial stability.
 
-### Bear Case - Key Concerns  
+### Bear Case - Key Concerns
 1. **High P/E Ratio:** At 188.95, Duolingo's valuation may not be sustainable if growth slows, posing a risk of correction.
 2. **Declining Trading Volume:** The marked drop in trading volume could indicate waning investor interest.
 3. **Sensitivity to Analyst Opinions:** The stock's recent decline following a downgrade demonstrates vulnerability to external analyst perceptions.
@@ -73,7 +73,7 @@ Duolingo's current valuation, with a P/E of 188.95, reflects high growth expecta
 - Operational risks from reliance on sustained user engagement.
 - Competitive pressures in the online education space.
 
-### Market & Sector Risks  
+### Market & Sector Risks
 - Regulatory changes affecting the online education landscape.
 - Economic downturns impacting consumer discretionary spending.
 
@@ -95,13 +95,13 @@ No fair value estimate provided, given the high variability and market condition
 ## Data Sources & Methodology
 
 ### Sources Used
-- [Yahoo Finance](https://finance.yahoo.com/news/duolingo-stock-posing-attractive-entry-182029389.html) - Jul 16, 2025 
+- [Yahoo Finance](https://finance.yahoo.com/news/duolingo-stock-posing-attractive-entry-182029389.html) - Jul 16, 2025
 - [Yahoo Finance](https://finance.yahoo.com/news/duolingo-inc-duol-q1-earnings-211507492.html) - Date of report
 - [AInvest](https://www.ainvest.com/news/duolingo-trading-volume-drops-42-77-223-million-ranks-454th-stock-price-gain-2507/)
 - [MarketBeat](https://www.marketbeat.com/instant-alerts/duolingo-nasdaqduol-trading-down-46-following-analyst-downgrade-2025-07-08/)
 - [Robinhood](https://robinhood.com/stocks/DUOL/)
 
-### Data Quality Notes  
+### Data Quality Notes
 Information is based on up-to-date and verified sources for accuracy. Limitations may exist due to market volatility and data gathering timings.
 
 ### Report Disclaimers

@@ -48,11 +48,11 @@ start_agent() {
     local host=$4
     local port=$5
     local extra_args=$6
-    
+
     echo "Starting $name on $host:$port..."
-    
+
     cd "$workdir"
-    
+
     # Start the agent in background
     # Pass OTEL_RUN_TIMESTAMP if set (for unified timestamp across all agents)
     if [ -n "$extra_args" ]; then
@@ -62,14 +62,14 @@ start_agent() {
         nohup env OTEL_RUN_TIMESTAMP="${OTEL_RUN_TIMESTAMP:-}" python -m "$module" --host "$host" --port "$port" \
             > "$LOG_DIR/${name}_${TS}.log" 2>&1 &
     fi
-    
+
     local pid=$!
     echo $pid > "$PID_DIR/${name}.pid"
     echo "  ✓ Started with PID: $pid"
-    
+
     # Wait a moment for startup
     sleep 1
-    
+
     # Check if process is still running
     if ! kill -0 $pid 2>/dev/null; then
         echo "  ✗ ERROR: Process died immediately! Check logs:"
@@ -81,9 +81,9 @@ start_agent() {
 # Function to start coordinator (API mode, no UI)
 start_coordinator() {
     echo "Starting Coordinator API on $COORDINATOR_HOST:$COORDINATOR_PORT..."
-    
+
     cd "$PROJECT_ROOT/src/hosts/coordinator"
-    
+
     # Ensure environment variables are passed
     export PROVIDER=${PROVIDER:-ollama}
     export MODEL=${MODEL:-gpt-3.5-turbo}
@@ -92,17 +92,17 @@ start_coordinator() {
     export CONTENT_PLANNER_AGENT_URL=${CONTENT_PLANNER_AGENT_URL:-http://127.0.0.1:10001}
     export CONTENT_WRITER_AGENT_URL=${CONTENT_WRITER_AGENT_URL:-http://127.0.0.1:10002}
     export CONTENT_EDITOR_AGENT_URL=${CONTENT_EDITOR_AGENT_URL:-http://127.0.0.1:10003}
-    
+
     # Use the API-only version without Gradio UI
     # Pass OTEL_RUN_TIMESTAMP if set (for unified timestamp across all agents)
     nohup env OTEL_RUN_TIMESTAMP="${OTEL_RUN_TIMESTAMP:-}" python -m coordinator.__main_api__ --host "$COORDINATOR_HOST" --port "$COORDINATOR_PORT" \
         > "$LOG_DIR/coordinator_${TS}.log" 2>&1 &
-    
+
     local pid=$!
     echo $pid > "$PID_DIR/coordinator.pid"
     echo "  ✓ Started with PID: $pid"
     sleep 2
-    
+
     if ! kill -0 $pid 2>/dev/null; then
         echo "  ✗ ERROR: Coordinator died immediately! Check logs:"
         echo "    tail -50 $LOG_DIR/coordinator_${TS}.log"

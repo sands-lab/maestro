@@ -5,7 +5,7 @@ from .. import config
 
 def check_condition_and_escalate_tool(tool_context: ToolContext) -> dict:
     """Checks the loop termination condition and escalates if met or max count reached."""
- 
+
 
     # Increment loop iteration count using state
     current_loop_count = tool_context.state.get("loop_iteration", 0)

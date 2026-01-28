@@ -35,11 +35,11 @@ async def generate_image(img_prompt: str, tool_context: "ToolContext"):
     if not response.generated_images:
         return {"status": "failed"}
     image_bytes = response.generated_images[0].image.image_bytes
-    
+
     # Save locally for user visibility
     with open("generated_logo.png", "wb") as f:
         f.write(image_bytes)
-        
+
     await tool_context.save_artifact(
         "image.png",
         types.Part.from_bytes(data=image_bytes, mime_type="image/png"),

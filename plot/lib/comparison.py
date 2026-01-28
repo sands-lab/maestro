@@ -22,7 +22,7 @@ from .extractors import (
 
 class ExampleMetrics:
     """Metrics data container for a single example."""
-    
+
     def __init__(self, example_name: str):
         self.example_name = example_name
         self.tokens = None
@@ -43,7 +43,7 @@ class ExampleMetrics:
         self.pairwise_jaccard = []  # All pairwise Jaccard similarity values
         self.traces = []
         self.metrics = []
-    
+
     def extract_all_metrics(self, traces: List[Dict], metrics: Optional[List[Dict]] = None):
         """Extract all metrics from traces and metrics (latest mode)."""
         # Token consumption
@@ -52,7 +52,7 @@ class ExampleMetrics:
             'total': total_tokens,
             'per_agent': per_agent_tokens
         }
-        
+
         # Delay breakdown
         delays, per_agent_delays, inter_agent_delays, agent_llm_delays = extract_delay_breakdown(traces)
         self.delays = {
@@ -61,7 +61,7 @@ class ExampleMetrics:
             'inter_agent': inter_agent_delays,
             'agent_llm': agent_llm_delays
         }
-        
+
         # Message sizes
         sizes, per_agent_sizes, inter_agent_sizes, agent_llm_sizes = extract_message_sizes(traces)
         self.message_sizes = {
@@ -70,19 +70,19 @@ class ExampleMetrics:
             'inter_agent': inter_agent_sizes,
             'agent_llm': agent_llm_sizes
         }
-        
+
         # CPU/Memory usage
         if metrics:
             self.resource_usage = extract_cpu_memory_usage(metrics)
         else:
             self.resource_usage = None
-        
+
         # Call graph
         self.call_graph = extract_call_graph(traces)
-        
+
         self.traces = traces
         self.metrics = metrics or []
-    
+
     def extract_call_graphs_from_runs(
         self,
         run_traces: List[Tuple[str, List[Dict]]],
@@ -118,7 +118,7 @@ class ExampleMetrics:
                     if len(edges_preview) > 5
                     else f"    Graph edges: {edges_preview}"
                 )
-        
+
         # Compute average pairwise normalized GED across all runs within this example
         if compute_ged:
             if len(self.call_graphs_per_run) >= 2:
@@ -134,7 +134,7 @@ class ExampleMetrics:
                         pairwise_distances.append(normalized_ged)
                         print(f"  Pair ({i+1}, {j+1}): graph_ged={normalized_ged:.4f}")
                 self.pairwise_normalized_ged = pairwise_distances
-                
+
                 # Average = mean of all pairwise distances
                 # Total number of pairs: n*(n-1)/2
                 self.average_pairwise_normalized_ged = np.mean(pairwise_distances) if pairwise_distances else 0.0
@@ -203,10 +203,10 @@ class ExampleMetrics:
 
 class MultiExampleCollector:
     """Multi-example metrics collector."""
-    
+
     def __init__(self):
         self.examples: Dict[str, ExampleMetrics] = {}
-    
+
     def add_example(
         self,
         example_name: str,
@@ -219,14 +219,14 @@ class MultiExampleCollector:
         tags: Optional[List[str]] = None,
     ) -> ExampleMetrics:
         """Add an example and extract its metrics.
-        
+
         Args:
             example_name: Example name
             traces_dir: Path to traces directory
             metrics_dir: Path to metrics directory (optional)
             base_dir: Base directory (optional)
             analysis_mode: Analysis mode ('latest' or 'per_run')
-        
+
         Returns:
             ExampleMetrics object
         """
@@ -240,10 +240,10 @@ class MultiExampleCollector:
             tags=tags,
         )
         analyzer.load_data()
-        
+
         # Create metrics object and extract data
         example_metrics = ExampleMetrics(example_name)
-        
+
         if analysis_mode == 'per_run' and hasattr(analyzer, 'run_traces'):
             # per_run mode: extract call graph for each run and compute average pairwise normalized GED
             example_metrics.extract_call_graphs_from_runs(
@@ -258,26 +258,26 @@ class MultiExampleCollector:
         else:
             # latest mode: extract only one call graph
             example_metrics.extract_all_metrics(analyzer.traces, analyzer.metrics)
-        
+
         self.examples[example_name] = example_metrics
         return example_metrics
-    
+
     def get_metric(self, example_name: str, metric_type: str):
         """Get specified metric for specified example.
-        
+
         Args:
             example_name: Example name
             metric_type: Metric type ('tokens', 'delays', 'message_sizes', 'resource_usage', 'call_graph')
-        
+
         Returns:
             Metric data
         """
         if example_name not in self.examples:
             raise ValueError(f"Example '{example_name}' not found")
-        
+
         example = self.examples[example_name]
         return getattr(example, metric_type, None)
-    
+
     def get_all_examples(self) -> Dict[str, ExampleMetrics]:
         """Get all examples."""
         return self.examples
@@ -285,22 +285,22 @@ class MultiExampleCollector:
 
 def compute_graph_size(edges: Set[Tuple[str, str]] | Dict[Tuple[str, str], int]) -> int:
     """Compute graph size (number of nodes).
-    
+
     Args:
         edges: Edge set or weighted edge map (source, target) -> weight
-    
+
     Returns:
         Graph size = number of nodes
     """
     if not edges:
         return 0
-    
+
     # Collect all nodes
     nodes = set()
     for source, target in edges:
         nodes.add(source)
         nodes.add(target)
-    
+
     return len(nodes)
 
 
@@ -375,13 +375,13 @@ def compute_graph_edit_distance(
     graph2: Set[Tuple[str, str]] | Dict[Tuple[str, str], int]
 ) -> int:
     """Compute weighted graph edit distance between two call graphs.
-    
+
     Graph edit distance = edge weight L1 distance + node insert/delete cost.
-    
+
     Args:
         graph1: Edge set or weighted edge map for the first graph
         graph2: Edge set or weighted edge map for the second graph
-    
+
     Returns:
         Graph edit distance (integer)
     """
@@ -402,18 +402,18 @@ def compute_normalized_graph_edit_distance(
     graph2: Set[Tuple[str, str]] | Dict[Tuple[str, str], int]
 ) -> float:
     """Compute normalized graph edit distance.
-    
+
     Normalization = graph edit distance / total_call_weight
-    
+
     Args:
         graph1: Edge set of the first graph
         graph2: Edge set of the second graph
-    
+
     Returns:
         Normalized graph edit distance (0 means identical)
     """
     edit_distance = compute_graph_edit_distance(graph1, graph2)
-    
+
     weights1 = _to_weight_map(graph1)
     weights2 = _to_weight_map(graph2)
     total_edge_weight = sum(weights1.values()) + sum(weights2.values())
@@ -422,11 +422,11 @@ def compute_normalized_graph_edit_distance(
     nodes2 = {node for edge in weights2 for node in edge}
     total_node_weight = len(nodes1) + len(nodes2)
     total_weight = total_edge_weight + total_node_weight
-    
+
     if total_weight == 0:
         # Both graphs are empty, consider them identical
         return 0.0
-    
+
     return edit_distance / total_weight
 
 
@@ -434,7 +434,7 @@ def compute_normalized_graph_edit_distance(
 
 class CrossExampleVisualizer:
     """Cross-example comparison visualizer."""
-    
+
     def __init__(self, collector: MultiExampleCollector):
         self.collector = collector
 
@@ -570,11 +570,11 @@ class CrossExampleVisualizer:
     ) -> Optional[Dict[str, object]]:
         if examples is None:
             examples = list(self.collector.examples.keys())
-        
+
         if len(examples) < 1:
             print("Warning: Need at least 1 example for comparison")
             return None
-        
+
         # Collect average pairwise normalized graph edit distance for each example
         example_avg_ged = {}
         example_avg_lcs = {}
@@ -588,10 +588,10 @@ class CrossExampleVisualizer:
         example_num_runs = {}
         example_graph_sizes = {}
         example_graph_details = {}
-        
+
         for name in examples:
             example = self.collector.examples[name]
-            
+
             # Get average pairwise normalized graph edit distance
             if example.average_pairwise_normalized_ged is not None:
                 example_avg_ged[name] = example.average_pairwise_normalized_ged
@@ -604,7 +604,7 @@ class CrossExampleVisualizer:
                 example_pairwise_lcs[name] = example.pairwise_lcs if example.pairwise_lcs else [0.0]
                 example_pairwise_jaccard[name] = example.pairwise_jaccard if example.pairwise_jaccard else [0.0]
                 example_num_runs[name] = len(example.call_graphs_per_run)
-                
+
                 # Compute average graph size across all runs
                 if example.call_graphs_per_run:
                     # Collect detailed information (node and edge counts)
@@ -637,11 +637,11 @@ class CrossExampleVisualizer:
                     example_graph_details[name] = {'avg_nodes': 0, 'avg_edges': 0, 'unique_nodes': 0, 'unique_edges': 0}
             else:
                 print(f"Warning: No call graph similarity data found for example '{name}' (may need per_run mode)")
-        
+
         if not example_avg_ged:
             print("Warning: No examples with call graph similarity data found")
             return None
-        
+
         example_names = list(example_avg_ged.keys())
         return {
             'example_names': example_names,
@@ -671,7 +671,7 @@ class CrossExampleVisualizer:
         data = self._collect_call_graph_similarity_data(examples)
         if data is None:
             return
-        
+
         example_names = data['example_names']
         pairwise_ged_values = data['pairwise_ged_values']
         pairwise_lcs_values = data['pairwise_lcs_values']
@@ -777,17 +777,17 @@ class CrossExampleVisualizer:
                 "Overall mean across examples: "
                 f"Jaccard={mean_jaccard:.4f}, LCS={mean_lcs:.4f}"
             )
-    
+
     def plot_call_graph_similarity(
         self,
         output_file: str,
         examples: Optional[List[str]] = None
     ):
         """Plot call graph similarity comparison.
-        
+
         Computes call graph similarity for each example (average pairwise normalized graph edit distance
         across all runs within each example) and displays results in a single figure.
-        
+
         Args:
             output_file: Output file path
             examples: List of examples to compare (None means all examples)
@@ -795,7 +795,7 @@ class CrossExampleVisualizer:
         data = self._collect_call_graph_similarity_data(examples)
         if data is None:
             return
-        
+
         # Prepare data for visualization
         example_names = data['example_names']
         avg_ged_values = data['avg_ged_values']
@@ -812,7 +812,7 @@ class CrossExampleVisualizer:
         avg_nodes = data['avg_nodes']
         avg_edges = data['avg_edges']
         example_graph_details = data['example_graph_details']
-        
+
         style = self._similarity_plot_style()
         panel_specs = self._similarity_panel_specs()
         scope_label = 'Example'
@@ -950,25 +950,25 @@ class CrossExampleVisualizer:
             fig.savefig(output_file, dpi=300, bbox_inches='tight')
             plt.close(fig)
             print(f"Call graph similarity comparison plot saved to: {output_file}")
-    
+
     def plot_token_comparison(self, output_file: str, examples: Optional[List[str]] = None):
         """Compare token consumption across multiple examples.
-        
+
         Args:
             output_file: Output file path
             examples: List of examples to compare (None means all examples)
         """
         if examples is None:
             examples = list(self.collector.examples.keys())
-        
+
         fig, axes = plt.subplots(2, 2, figsize=(16, 10))
-        
+
         # Collect data
         example_names = []
         total_tokens = []
         prompt_tokens = []
         completion_tokens = []
-        
+
         for name in examples:
             tokens = self.collector.get_metric(name, 'tokens')
             if tokens:
@@ -976,17 +976,17 @@ class CrossExampleVisualizer:
                 total_tokens.append(tokens['total']['total'])
                 prompt_tokens.append(tokens['total']['prompt'])
                 completion_tokens.append(tokens['total']['completion'])
-        
+
         if not example_names:
             print("Warning: No token data found for comparison")
             return
-        
+
         # Chart 1: Total token comparison (stacked bar chart)
         ax1 = axes[0, 0]
         x = np.arange(len(example_names))
         width = 0.6
         ax1.bar(x, prompt_tokens, width, label='Prompt Tokens', color='#3498db', alpha=0.8)
-        ax1.bar(x, completion_tokens, width, bottom=prompt_tokens, 
+        ax1.bar(x, completion_tokens, width, bottom=prompt_tokens,
                 label='Completion Tokens', color='#e74c3c', alpha=0.8)
         ax1.set_xlabel('Example', fontsize=12, fontweight='bold')
         ax1.set_ylabel('Token Count', fontsize=12, fontweight='bold')
@@ -995,7 +995,7 @@ class CrossExampleVisualizer:
         ax1.set_xticklabels(example_names, rotation=45, ha='right')
         ax1.legend()
         ax1.grid(axis='y', alpha=0.3)
-        
+
         # Chart 2: Total token comparison (side-by-side bar chart)
         ax2 = axes[0, 1]
         width = 0.35
@@ -1008,7 +1008,7 @@ class CrossExampleVisualizer:
         ax2.set_xticklabels(example_names, rotation=45, ha='right')
         ax2.legend()
         ax2.grid(axis='y', alpha=0.3)
-        
+
         # Chart 3 removed (per-agent token comparison was too crowded)
         # Chart 3 (now statistics table)
         ax3 = axes[1, 0]
@@ -1029,16 +1029,16 @@ class CrossExampleVisualizer:
         table.set_fontsize(9)
         table.scale(1, 2)
         ax3.set_title('Token Statistics Summary', fontsize=14, fontweight='bold', pad=20)
-        
+
         # Chart 4 left blank to avoid overcrowding
         ax4 = axes[1, 1]
         ax4.axis('off')
-        
+
         plt.tight_layout()
         plt.savefig(output_file, dpi=300, bbox_inches='tight')
         plt.close()
         print(f"Token comparison plot saved to: {output_file}")
-    
+
     def plot_custom_comparison(
         self,
         metric_extractor: callable,
@@ -1047,7 +1047,7 @@ class CrossExampleVisualizer:
         examples: Optional[List[str]] = None
     ):
         """Custom comparison visualization.
-        
+
         Args:
             metric_extractor: Function that takes ExampleMetrics object and returns metric value to compare
             plot_function: Function that takes (metric_values_dict, output_path) and performs plotting
@@ -1056,12 +1056,12 @@ class CrossExampleVisualizer:
         """
         if examples is None:
             examples = list(self.collector.examples.keys())
-        
+
         # Extract metrics for each example
         metric_values = {}
         for name in examples:
             example = self.collector.examples[name]
             metric_values[name] = metric_extractor(example)
-        
+
         # Call custom plotting function
         plot_function(metric_values, output_file)

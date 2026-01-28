@@ -15,4 +15,3 @@ def load_openai_key(env_var: str = "OPENAI_API_KEY") -> str:
         )
     os.environ["OPENAI_API_KEY"] = api_key
     return api_key
-

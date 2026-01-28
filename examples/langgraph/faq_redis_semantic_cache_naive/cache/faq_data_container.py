@@ -33,4 +33,3 @@ class FAQDataContainer:
             f"FAQDataContainer(faq_rows={len(self.faq_df)}, "
             f"test_rows={len(self.test_df)})"
         )
-

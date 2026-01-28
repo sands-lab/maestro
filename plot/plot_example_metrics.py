@@ -38,7 +38,7 @@ def load_config(config_file: Path) -> dict:
     """Load configuration from JSON file."""
     if not config_file.exists():
         return {}
-    
+
     try:
         with open(config_file, 'r', encoding='utf-8') as f:
             config = json.load(f)
@@ -61,7 +61,7 @@ def save_config(config: dict, config_file: Path):
 
 def parse_examples_config(config_file: Path) -> Dict[str, Dict[str, str]]:
     """Parse examples configuration from JSON file.
-    
+
     Expected format:
     {
       "example_name": {
@@ -74,7 +74,7 @@ def parse_examples_config(config_file: Path) -> Dict[str, Dict[str, str]]:
     """
     if not config_file.exists():
         raise FileNotFoundError(f"Examples config file not found: {config_file}")
-    
+
     try:
         with open(config_file, 'r', encoding='utf-8') as f:
             config = json.load(f)
@@ -137,7 +137,7 @@ def plot_tree_of_thoughts_model_similarity() -> None:
             str(tot_root / "metrics" / "gpt-5o-nano"),
         ),
     ]
-    
+
     collector = MultiExampleCollector()
     for model_name, traces_dir, metrics_dir in model_dirs:
         print(f"Loading model traces: {model_name}...")
@@ -154,14 +154,14 @@ def plot_tree_of_thoughts_model_similarity() -> None:
         except Exception as e:
             print(f"  ✗ Error loading {model_name}: {e}")
             continue
-    
+
     if not collector.examples:
         print("Error: No model data loaded for tree-of-thoughts")
         return
-    
+
     output_dir = _script_dir / 'figures' / 'comparison'
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     visualizer = CrossExampleVisualizer(collector)
     loaded_models = [name for name, _, _ in model_dirs if name in collector.examples]
     output_file = output_dir / 'call_graph_similarity_by_model.pdf'
@@ -180,7 +180,7 @@ def process_example(
     project_root: Path
 ) -> None:
     """Process a single example and generate visualizations.
-    
+
     Args:
         example_name: Name of the example
         example_config: Configuration dict with traces_dir, metrics_dir, base_dir
@@ -193,21 +193,21 @@ def process_example(
         base_dir = project_root / base_dir if not Path(base_dir).is_absolute() else Path(base_dir)
     else:
         base_dir = project_root
-    
+
     traces_dir = example_config.get('traces_dir', 'traces')
     metrics_dir = example_config.get('metrics_dir', 'metrics')
-    
+
     # Resolve traces_dir and metrics_dir
     if not Path(traces_dir).is_absolute():
         traces_dir = str(base_dir / traces_dir)
     if not Path(metrics_dir).is_absolute():
         metrics_dir = str(base_dir / metrics_dir)
-    
+
     # Output directory: plot/figures/<example_name>
     output_dir = _script_dir / 'figures' / example_name
     # Ensure output directory and all parent directories exist
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     print("=" * 80)
     print(f"Processing example: {example_name}")
     print("=" * 80)
@@ -217,7 +217,7 @@ def process_example(
     print(f"Metrics directory: {metrics_dir}")
     print(f"Output directory: {output_dir}")
     print()
-    
+
     dataset_example_name = example_config.get("dataset_example_name")
     tags = example_config.get("tags")
     if isinstance(tags, str):
@@ -232,7 +232,7 @@ def process_example(
         example_name=dataset_example_name or example_name,
         tags=tags,
     )
-    
+
     # Run analysis
     analyzer.analyze(output_dir=str(output_dir))
     print(f"\n✓ Completed visualization for {example_name}")
@@ -253,13 +253,13 @@ Examples (Unified Mode - Recommended):
   python plot_example_metrics.py --example brand-search-optimization \\
       --example-traces-dir examples/adk/brand-search-optimization/traces \\
       --example-metrics-dir examples/adk/brand-search-optimization/metrics
-  
+
   # Process multiple examples from config file
   python plot_example_metrics.py --examples-config examples_config.json --mode per_run
-  
+
   # Run latest + per_run in one command
   python plot_example_metrics.py --examples-config examples_config.json --mode all
-  
+
   # Process single example with base directory
   python plot_example_metrics.py --example marketing-agency \\
       --example-base-dir examples/adk/marketing-agency \\
@@ -269,18 +269,18 @@ Examples (Unified Mode - Recommended):
 Legacy Mode (Backward Compatible):
   # Analyze latest run (quick analysis)
   python plot_example_metrics.py --mode latest
-  
+
   # Analyze all runs with statistics (recommended for academic papers)
   python plot_example_metrics.py --mode per_run
-  
+
   # Use custom directories
   python plot_example_metrics.py --traces-dir custom_traces --metrics-dir custom_metrics
-  
+
   # Use configuration file
   python plot_example_metrics.py --config config.json
         """
     )
-    
+
     # Unified mode arguments (new)
     parser.add_argument(
         '--example',
@@ -317,11 +317,11 @@ Legacy Mode (Backward Compatible):
         action='store_true',
         help='Generate tree-of-thoughts call graph similarity violins across models (hardcoded paths).'
     )
-    
+
     # Legacy mode arguments (backward compatible)
     parser.add_argument(
-        '--mode', 
-        choices=['latest', 'per_run', 'all'], 
+        '--mode',
+        choices=['latest', 'per_run', 'all'],
         default=None,
         help='Analysis mode: latest (quick analysis), per_run (per-run stats), or all (run latest + per_run). Default: per_run.'
     )
@@ -361,7 +361,7 @@ Legacy Mode (Backward Compatible):
         default=None,
         help='Save current command-line arguments to a configuration file for future use. (Legacy mode)'
     )
-    
+
     args = parser.parse_args()
 
     if args.tree_of_thoughts_model_similarity:
@@ -376,15 +376,15 @@ Legacy Mode (Backward Compatible):
             raise SystemExit(
                 f"Default examples config not found: {DEFAULT_EXAMPLES_CONFIG}"
             )
-    
+
     # Determine mode: unified or legacy
     is_unified_mode = not legacy_mode
-    
+
     if is_unified_mode:
         # Unified mode: process examples
         mode = args.mode or 'all'
         modes_to_run = ['latest', 'per_run'] if mode == 'all' else [mode]
-        
+
         if args.examples_config:
             # Process multiple examples from config file
             config_file = Path(args.examples_config)
@@ -392,11 +392,11 @@ Legacy Mode (Backward Compatible):
                 config_file = Path.cwd() / config_file
                 if not config_file.exists():
                     config_file = _project_root / args.examples_config
-            
+
             examples_config = parse_examples_config(config_file)
             print(f"Loaded examples configuration from {config_file}")
             print(f"Found {len(examples_config)} example(s) to process\n")
-            
+
             # Process each example separately (supports running multiple modes)
             for example_name, example_config in examples_config.items():
                 for run_mode in modes_to_run:
@@ -409,23 +409,23 @@ Legacy Mode (Backward Compatible):
             print("=" * 80)
             print("All examples processed!")
             print("=" * 80)
-        
+
         elif args.example:
             # Process single example
             if not args.example_traces_dir or not args.example_metrics_dir:
                 parser.error("--example requires --example-traces-dir and --example-metrics-dir, or use --examples-config")
-            
+
             example_config = {
                 'traces_dir': args.example_traces_dir,
                 'metrics_dir': args.example_metrics_dir,
                 'base_dir': args.example_base_dir,
             }
-            
+
             for run_mode in modes_to_run:
                 process_example(args.example, example_config, run_mode, _project_root)
         else:
             parser.error("Must specify either --example or --examples-config for unified mode")
-    
+
     else:
         # Legacy mode: backward compatible behavior
         # Load configuration from file if specified
@@ -440,7 +440,7 @@ Legacy Mode (Backward Compatible):
             config = load_config(config_file)
             if config:
                 print(f"Loaded configuration from {config_file}")
-        
+
         # Merge config with command-line arguments (CLI args take precedence)
         mode = args.mode or config.get('mode', 'all')
         modes_to_run = ['latest', 'per_run'] if mode == 'all' else [mode]
@@ -448,13 +448,13 @@ Legacy Mode (Backward Compatible):
         metrics_dir = args.metrics_dir or config.get('metrics_dir')
         base_dir = args.base_dir or config.get('base_dir')
         output_dir = args.output_dir or config.get('output_dir', 'visualizations')
-        
+
         # Save configuration if requested
         if args.save_config:
             save_config_file = Path(args.save_config)
             if not save_config_file.is_absolute():
                 save_config_file = Path.cwd() / save_config_file
-            
+
             config_to_save = {
                 'mode': mode,
                 'traces_dir': traces_dir,
@@ -465,7 +465,7 @@ Legacy Mode (Backward Compatible):
             # Remove None values
             config_to_save = {k: v for k, v in config_to_save.items() if v is not None}
             save_config(config_to_save, save_config_file)
-        
+
         print("=" * 80)
         print("OpenTelemetry Metrics Visualization (Legacy Mode)")
         print("=" * 80)
@@ -478,7 +478,7 @@ Legacy Mode (Backward Compatible):
             print(f"Base directory: {base_dir}")
         print(f"Output directory: {output_dir}")
         print()
-        
+
         # Create analyzer with specified parameters
         for run_mode in modes_to_run:
             analyzer = MetricsAnalyzer(
@@ -487,7 +487,7 @@ Legacy Mode (Backward Compatible):
                 base_dir=base_dir,
                 analysis_mode=run_mode
             )
-            
+
             # Run analysis
             analyzer.analyze(output_dir=output_dir)
 

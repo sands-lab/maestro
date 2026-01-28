@@ -60,10 +60,10 @@ SCORING_PROMPT = """
         "5. Compute the total_score by adding each individual score point for each rule in the JSON "
         "6. Invoke the set_score tool and pass the total_score. "
 
-       
+
         "OUTPUT JSON FORMAT SPECIFICATION:\n"
         "The JSON object MUST have exactly two top-level keys:"
         "  - 'total_score': Iterate through each individual score element in the json and add those to arrive at total_score. "
         "  - 'scores': The existing rules json with a score attribute assigned to each rule and a reason attribute"
-  
+
 """

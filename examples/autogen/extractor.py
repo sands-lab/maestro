@@ -18,7 +18,7 @@ def delay_extractor(_trace_dict):
                 if 'invoke_agent' in _trace_dict[current_span_id]['name']:
                     agent_name = _trace_dict[current_span_id]['name'].split()[-1]
                     # == Processing Time ==
-                    invoke_agent_time = _trace_dict[current_span_id]['duration_ns'] / 1e6 # ms  
+                    invoke_agent_time = _trace_dict[current_span_id]['duration_ns'] / 1e6 # ms
                     _invoke_agent_child_time_sum = 0
                     for _, _v in _trace_dict.items():
                         if _v['parent_span_id'] == current_span_id:
@@ -34,7 +34,7 @@ def delay_extractor(_trace_dict):
             _temp_dict['agent_name'] = agent_name
             _temp_dict['agent-llm_delay'] = agent_llm_delay
             # == Agent-LLM Delay ==
-            
+
         elif "autogen publish output_topic" in v['name'] or "autogen publish group_topic" in v['name']:
             # == Inter-Agent Delay ==
             if 'agent_name' not in _temp_dict:
@@ -46,10 +46,10 @@ def delay_extractor(_trace_dict):
             # == Inter-Agent Delay ==
         elif v['parent_span_id'] is None:
             whole_time = v['duration_ns'] / 1e6 # ms
-    
+
     if _temp_dict:
         _return.append(_temp_dict)
-        
+
     all_agent_llm_delay = 0
     all_processing_time = 0
     all_inter_agent_delay = 0
@@ -67,7 +67,7 @@ def delay_extractor(_trace_dict):
         'whole_time': whole_time
     })
     return _return
-    
+
 def token_extractor(_trace_dict):
     _return_list = []
     total_input_token = 0
@@ -101,7 +101,7 @@ def token_extractor(_trace_dict):
         'all_token': total_input_token + total_output_token
     })
     return _return_list
-    
+
 def cpu_extractor(_cpu_list):
     start_time = 0
     return_list = []
@@ -113,7 +113,7 @@ def cpu_extractor(_cpu_list):
         cpu_utilization = data_points['value'] * 100 # percentage
         return_list.append((delta_time, cpu_utilization))
     return return_list
-    
+
 def memory_extractor(_memory_list):
     start_time = 0
     return_list = []
@@ -140,7 +140,7 @@ def message_size_extractor(_trace_dict):
                 current_span_id = target_span_id
                 target_span_id = _trace_dict[current_span_id]['parent_span_id']
             _temp_dict['agent_name'] = agent_name
-            
+
             input_all = 0
             output_all = 0
             for _k, _v in v['attributes'].items():

@@ -46,10 +46,10 @@ _metrics_thread = None
 
 class JsonFileMetricExporter(MetricExporter):
     """Exporter that writes metrics to local JSON files."""
-    
+
     def __init__(self, file_path: str):
         """Initialize JSON file exporter.
-        
+
         Args:
             file_path: Path to JSON file
         """
@@ -59,54 +59,54 @@ class JsonFileMetricExporter(MetricExporter):
         # Use None to accept defaults (same as ConsoleMetricExporter)
         self._preferred_temporality = None
         self._preferred_aggregation = None
-    
+
     def export(self, metrics_data, timeout_millis: float = 10000, **kwargs):
         """Export metrics to JSON file.
-        
+
         Args:
             metrics_data: Metrics data to export
             timeout_millis: Maximum time to wait for export (not used for file export)
             **kwargs: Additional arguments
-            
+
         Returns:
             MetricExportResult.SUCCESS
         """
         try:
             # Convert metrics to serializable format
             metric_records = []
-            
+
             # Extract metric data from the metrics_data object
             if hasattr(metrics_data, 'resource_metrics'):
                 for resource_metric in metrics_data.resource_metrics:
                     resource_attrs = dict(resource_metric.resource.attributes) if resource_metric.resource and resource_metric.resource.attributes else {}
-                    
+
                     for scope_metric in resource_metric.scope_metrics:
                         scope_name = scope_metric.scope.name if scope_metric.scope else "unknown"
-                        
+
                         for metric in scope_metric.metrics:
                             metric_name = metric.name
                             metric_description = metric.description if hasattr(metric, 'description') else None
                             metric_unit = metric.unit if hasattr(metric, 'unit') else None
-                            
+
                             # Extract data points
                             data_points = []
                             if hasattr(metric, 'data') and hasattr(metric.data, 'data_points'):
                                 for data_point in metric.data.data_points:
                                     point_attrs = dict(data_point.attributes) if hasattr(data_point, 'attributes') and data_point.attributes else {}
-                                    
+
                                     # Add service name as agent identifier if not present
                                     if "agent.name" not in point_attrs:
                                         # Try to infer from resource attributes or use service name
                                         agent_name = resource_attrs.get("service.name", "marketing-agency")
                                         point_attrs["agent.name"] = agent_name
-                                    
+
                                     point_dict = {
                                         "value": data_point.value if hasattr(data_point, 'value') else None,
                                         "timestamp": data_point.time_unix_nano if hasattr(data_point, 'time_unix_nano') else None,
                                         "attributes": point_attrs,
                                     }
                                     data_points.append(point_dict)
-                            
+
                             metric_record = {
                                 "timestamp": datetime.now().isoformat(),
                                 "metric_name": metric_name,
@@ -119,31 +119,31 @@ class JsonFileMetricExporter(MetricExporter):
                                 "scope": scope_name,
                             }
                             metric_records.append(metric_record)
-            
+
             # Append to file (supports incremental writes)
             if metric_records:
                 with open(self.file_path, "a", encoding="utf-8") as f:
                     for record in metric_records:
                         f.write(json.dumps(record, default=str) + "\n")
-            
+
             return MetricExportResult.SUCCESS
         except Exception as e:
             logger.error(f"Failed to export metrics to {self.file_path}: {e}", exc_info=True)
             return MetricExportResult.FAILURE
-    
+
     def force_flush(self, timeout_millis: int = 30000, **kwargs):
         """Force flush any pending metrics.
-        
+
         Args:
             timeout_millis: Maximum time to wait for flush.
             **kwargs: Additional arguments.
         """
         # For file exporter, data is written immediately, so no explicit flush needed
         pass
-    
+
     def shutdown(self, timeout_millis: int = 30000, **kwargs):
         """Shutdown the exporter.
-        
+
         Args:
             timeout_millis: Maximum time to wait for shutdown.
             **kwargs: Additional arguments.
@@ -153,23 +153,23 @@ class JsonFileMetricExporter(MetricExporter):
 
 class JsonFileSpanExporter(SpanExporter):
     """Exporter that writes spans to local JSON files."""
-    
+
     def __init__(self, file_path: str):
         """Initialize JSON file exporter.
-        
+
         Args:
             file_path: Path to JSON file
         """
         self.file_path = Path(file_path)
         self.file_path.parent.mkdir(parents=True, exist_ok=True)
         self.spans = []
-        
+
     def export(self, spans):
         """Export spans to JSON file.
-        
+
         Args:
             spans: List of spans to export
-            
+
         Returns:
             SpanExportResult.SUCCESS
         """
@@ -183,7 +183,7 @@ class JsonFileSpanExporter(SpanExporter):
                     parent_span_id = format(span.parent.span_id, "016x")
                 elif hasattr(span, "parent_context") and span.parent_context:
                     parent_span_id = format(span.parent_context.span_id, "016x")
-                
+
                 # Extract agent name from span attributes or name for better identification
                 attributes = dict(span.attributes) if span.attributes else {}
                 agent_name = (
@@ -192,11 +192,11 @@ class JsonFileSpanExporter(SpanExporter):
                     (span.name.split()[-1] if "invoke_agent" in span.name and len(span.name.split()) > 1 else None) or
                     "unknown"
                 )
-                
+
                 # Add agent_name to attributes if not already present (for backward compatibility)
                 if "agent.name" not in attributes and agent_name != "unknown":
                     attributes["agent.name"] = agent_name
-                
+
                 # Ensure gen_ai.agent.name is present (required by template)
                 # For call_llm spans, try to extract from gcp.vertex.agent.llm_request labels
                 if "gen_ai.agent.name" not in attributes:
@@ -215,7 +215,7 @@ class JsonFileSpanExporter(SpanExporter):
                                             agent_name = adk_agent_name
                             except (json.JSONDecodeError, KeyError, TypeError):
                                 pass
-                    
+
                     # If still not found, use extracted agent_name or agent.name
                     if "gen_ai.agent.name" not in attributes:
                         if agent_name != "unknown":
@@ -225,7 +225,7 @@ class JsonFileSpanExporter(SpanExporter):
                         else:
                             # Field must exist per template, set to null if not available
                             attributes["gen_ai.agent.name"] = None
-                
+
                 # Ensure LLM usage fields are present (default to 0 if missing)
                 if "gen_ai.usage.input_tokens" not in attributes:
                     attributes["gen_ai.usage.input_tokens"] = 0
@@ -236,14 +236,14 @@ class JsonFileSpanExporter(SpanExporter):
                     input_tokens = attributes.get("gen_ai.usage.input_tokens", 0) or 0
                     output_tokens = attributes.get("gen_ai.usage.output_tokens", 0) or 0
                     attributes["gen_ai.usage.total_tokens"] = input_tokens + output_tokens
-                
+
                 # Add LLM/MCP call counts (default to 0 if missing)
                 if "gen_ai.llm.call.count" not in attributes:
                     # Set to 1 if this is a call_llm span, otherwise 0
                     attributes["gen_ai.llm.call.count"] = 1 if "call_llm" in span.name else 0
                 if "gen_ai.mcp.call.count" not in attributes:
                     attributes["gen_ai.mcp.call.count"] = 0
-                
+
                 # Ensure gen_ai.operation.name is present (required by template)
                 if "gen_ai.operation.name" not in attributes:
                     if "call_llm" in span.name:
@@ -255,7 +255,7 @@ class JsonFileSpanExporter(SpanExporter):
                     elif span.name.lower() == "invocation":
                         # invocation spans are top-level entry points
                         attributes["gen_ai.operation.name"] = "invocation"
-                
+
                 # Ensure gen_ai.conversation.id is present (required by template)
                 # Copy from session_id if available, otherwise set to null
                 if "gen_ai.conversation.id" not in attributes:
@@ -265,14 +265,14 @@ class JsonFileSpanExporter(SpanExporter):
                     else:
                         # Field must exist per template, set to null if not available
                         attributes["gen_ai.conversation.id"] = None
-                
+
                 # Add missing optional fields with default values (per template)
                 # gen_ai.agent.description - optional, only in invoke_agent spans
                 if "gen_ai.agent.description" not in attributes:
                     # Try to extract from system_instruction or other sources
                     # For now, set to empty string if not available
                     attributes["gen_ai.agent.description"] = ""
-                
+
                 # gen_ai.tool.* fields - only for execute_tool spans
                 if "gen_ai.tool.name" not in attributes:
                     attributes["gen_ai.tool.name"] = ""
@@ -282,31 +282,31 @@ class JsonFileSpanExporter(SpanExporter):
                     attributes["gen_ai.tool.call.id"] = ""
                 if "gen_ai.tool.description" not in attributes:
                     attributes["gen_ai.tool.description"] = ""
-                
+
                 # gcp.vertex.agent.tool_* fields - optional
                 if "gcp.vertex.agent.tool_call_args" not in attributes:
                     attributes["gcp.vertex.agent.tool_call_args"] = ""
                 if "gcp.vertex.agent.tool_response" not in attributes:
                     attributes["gcp.vertex.agent.tool_response"] = ""
-                
+
                 # mcp.* fields - optional, not applicable for Vertex AI
                 if "mcp.server" not in attributes:
                     attributes["mcp.server"] = ""
                 if "mcp.tool" not in attributes:
                     attributes["mcp.tool"] = ""
-                
+
                 # agent.log - optional
                 if "agent.log" not in attributes:
                     attributes["agent.log"] = ""
-                
+
                 # Note: CPU/memory metrics are collected separately in metrics JSONL file,
                 # so we don't add them to span attributes (per template guidelines)
-                
+
                 # Calculate communication metrics for agent-to-agent calls
                 communication_metrics = {}
                 input_size = 0
                 output_size = 0
-                
+
                 # Check if this is agent-to-agent communication
                 # Only AgentTool calls are agent communication, not FunctionTool calls
                 is_agent_comm = False
@@ -323,54 +323,54 @@ class JsonFileSpanExporter(SpanExporter):
                 elif "invoke_agent" in span.name:
                     # invoke_agent spans are entry points, not agent-to-agent communication
                     is_agent_comm = False
-                
+
                 if is_agent_comm:
                     communication_metrics["is_agent_communication"] = True
-                    
+
                     # For execute_tool spans (AgentTool): measure actual tool call arguments and responses
                     if "execute_tool" in span.name:
                         # Input: tool call arguments (actual data passed to the agent)
                         tool_call_args = attributes.get("gcp.vertex.agent.tool_call_args", "")
                         if tool_call_args and isinstance(tool_call_args, str) and tool_call_args != "{}":
                             input_size = len(tool_call_args.encode('utf-8'))
-                        
+
                         # Output: tool response (actual data returned from the agent)
                         tool_response = attributes.get("gcp.vertex.agent.tool_response", "")
                         if tool_response and isinstance(tool_response, str) and tool_response != "{}":
                             output_size = len(tool_response.encode('utf-8'))
-                
+
                 # For call_llm spans: measure actual LLM request and response
                 elif "call_llm" in span.name:
                     # Input: LLM request (actual data sent to LLM)
                     llm_request = attributes.get("gcp.vertex.agent.llm_request", "")
                     if llm_request and isinstance(llm_request, str) and llm_request != "{}":
                         input_size = len(llm_request.encode('utf-8'))
-                    
+
                     # Output: LLM response (actual data received from LLM)
                     llm_response = attributes.get("gcp.vertex.agent.llm_response", "")
                     if llm_response and isinstance(llm_response, str) and llm_response != "{}":
                         output_size = len(llm_response.encode('utf-8'))
-                
+
                 # Store communication metrics and add to attributes for template compliance
                 # Template shows these fields, but per README: "If a field doesn't apply, omit it"
                 # So we only add them when there's actual communication data
                 # Ensure is_in_process_call is always present (default false)
                 if "is_in_process_call" not in communication_metrics:
                     communication_metrics["is_in_process_call"] = False
-                
+
                 if input_size > 0:
                     communication_metrics["input_message_size_bytes"] = input_size
                     attributes["communication.input_message_size_bytes"] = input_size
-                
+
                 if output_size > 0:
                     communication_metrics["output_message_size_bytes"] = output_size
                     attributes["communication.output_message_size_bytes"] = output_size
-                
+
                 if input_size > 0 or output_size > 0:
                     total_size = input_size + output_size
                     communication_metrics["total_message_size_bytes"] = total_size
                     attributes["communication.total_message_size_bytes"] = total_size
-                
+
                 # Get span kind
                 span_kind = "INTERNAL"  # Default
                 if hasattr(span, "kind"):
@@ -379,7 +379,7 @@ class JsonFileSpanExporter(SpanExporter):
                         span_kind = SpanKind(kind_value).name if kind_value is not None else "INTERNAL"
                     except (ValueError, AttributeError):
                         span_kind = "INTERNAL"
-                
+
                 # Get resource attributes and add host.name if available
                 resource_attrs = dict(span.resource.attributes) if span.resource and span.resource.attributes else {}
                 if "host.name" not in resource_attrs:
@@ -389,7 +389,7 @@ class JsonFileSpanExporter(SpanExporter):
                             resource_attrs["host.name"] = hostname
                     except Exception:
                         pass  # host.name is optional
-                
+
                 span_dict = {
                     "trace_id": format(span.context.trace_id, "032x"),
                     "span_id": format(span.context.span_id, "016x"),
@@ -419,17 +419,17 @@ class JsonFileSpanExporter(SpanExporter):
                     },
                 }
                 span_data.append(span_dict)
-            
+
             # Append to file (supports incremental writes)
             with open(self.file_path, "a", encoding="utf-8") as f:
                 for span_dict in span_data:
                     f.write(json.dumps(span_dict, default=str) + "\n")
-            
+
             return SpanExportResult.SUCCESS
         except Exception as e:
             logger.error(f"Failed to export spans to {self.file_path}: {e}", exc_info=True)
             return SpanExportResult.FAILURE
-    
+
     def shutdown(self):
         """Shutdown the exporter."""
         pass
@@ -437,17 +437,17 @@ class JsonFileSpanExporter(SpanExporter):
 
 def setup_tracing(service_name: Optional[str] = None, trace_file: Optional[str] = None):
     """Setup OpenTelemetry tracing with local JSON file export.
-    
+
     This function configures OpenTelemetry to automatically collect telemetry data
     from ADK agents. The instrumentation is automatic - ADK and OpenTelemetry
     instrumentation libraries will automatically create spans for:
-    
+
     - Agent invocations (invoke_agent)
     - LLM calls (call_llm) with model, tokens, and request/response data
     - Tool/function executions (execute_tool)
     - A2A server operations (request handling, event queue operations)
     - HTTP requests between agents
-    
+
     The collected data includes:
     - Trace IDs and Span IDs for distributed tracing
     - Timing information (start time, end time, duration)
@@ -455,7 +455,7 @@ def setup_tracing(service_name: Optional[str] = None, trace_file: Optional[str] 
     - Attributes (gen_ai.system, gen_ai.request.model, gen_ai.usage.*, etc.)
     - Events (exceptions, custom events)
     - Resource attributes (service.name, service.version, etc.)
-    
+
     Args:
         service_name: Service name, defaults to OTEL_SERVICE_NAME env var or "adk-agent"
         trace_file: Trace file path, defaults to OTEL_TRACE_FILE env var or auto-generated
@@ -464,28 +464,28 @@ def setup_tracing(service_name: Optional[str] = None, trace_file: Optional[str] 
         # Get configuration from environment variables
         service_name = service_name or os.getenv("OTEL_SERVICE_NAME", "adk-agent")
         trace_file = trace_file or os.getenv("OTEL_TRACE_FILE")
-        
+
         if not trace_file:
             # Default file path: traces directory in current working directory
             trace_dir = Path.cwd() / "traces"
             trace_dir.mkdir(exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             trace_file = str(trace_dir / f"{service_name}_{timestamp}.jsonl")
-        
+
         logger.info(f"Setting up OpenTelemetry tracing for {service_name}")
         logger.info(f"Trace file: {trace_file}")
-        
+
         # Create resource
         resource = Resource.create({
             "service.name": service_name,
             "service.version": os.getenv("OTEL_SERVICE_VERSION", "1.0.0"),
             "deployment.environment": os.getenv("OTEL_DEPLOYMENT_ENVIRONMENT", "local"),
         })
-        
+
         # Check if tracer provider already exists
         current_provider = trace.get_tracer_provider()
         provider_already_set = isinstance(current_provider, TracerProvider)
-        
+
         # If current provider is not a TracerProvider instance, create a new one
         if not provider_already_set:
             tracer_provider = TracerProvider(resource=resource)
@@ -501,15 +501,15 @@ def setup_tracing(service_name: Optional[str] = None, trace_file: Optional[str] 
                 tracer_provider.resource = Resource.create(merged_attrs)
             else:
                 tracer_provider.resource = resource
-        
+
         # Create and add JSON file exporter
         json_exporter = JsonFileSpanExporter(trace_file)
         span_processor = SimpleSpanProcessor(json_exporter)
         tracer_provider.add_span_processor(span_processor)
-        
+
         # Ensure tracer provider is set
         trace.set_tracer_provider(tracer_provider)
-        
+
         # Set environment variables to enable instrumentation libraries
         os.environ.setdefault("OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "true")
         # Enable full message content capture for GenAI instrumentation
@@ -520,7 +520,7 @@ def setup_tracing(service_name: Optional[str] = None, trace_file: Optional[str] 
         os.environ.setdefault("OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE", ".*")
         # Increase max attribute length to capture full messages (default is 250)
         os.environ.setdefault("OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT", "10000")
-        
+
         # Try to enable ADK's telemetry (only succeeds if OTLP endpoint is set)
         # Even if it fails, instrumentation libraries will use our tracer provider
         otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") or os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -531,11 +531,11 @@ def setup_tracing(service_name: Optional[str] = None, trace_file: Optional[str] 
                 logger.info(f"ADK OTLP exporter enabled for {otel_endpoint}")
             except Exception as e:
                 logger.warning(f"Failed to enable ADK OTLP exporter: {e}")
-        
+
         logger.info("Tracer provider configured with JSON file exporter")
-        
+
         logger.info("OpenTelemetry tracing setup completed")
-        
+
     except Exception as e:
         logger.error(f"Failed to setup tracing: {e}", exc_info=True)
         # Don't raise exception, allow application to continue (tracing is optional)
@@ -543,71 +543,71 @@ def setup_tracing(service_name: Optional[str] = None, trace_file: Optional[str] 
 
 def setup_metrics(service_name: Optional[str] = None, metrics_file: Optional[str] = None, enable_system_metrics: bool = True):
     """Setup OpenTelemetry metrics with system resource monitoring and local JSON file export.
-    
+
     This function configures OpenTelemetry Metrics to collect:
     - CPU usage (percentage)
     - Memory usage (percentage and absolute values)
     - Process-specific metrics
-    
+
     Metrics are exported to local JSON files, similar to trace export.
-    
+
     Note: In containerized environments, psutil will report container-level metrics,
     not host-level metrics. For host-level metrics, use cadvisor.
-    
+
     Args:
         service_name: Service name for resource attributes
         metrics_file: Metrics file path, defaults to OTEL_METRICS_FILE env var or auto-generated
         enable_system_metrics: Whether to enable CPU/memory monitoring (default: True)
     """
     global _metrics_initialized, _metrics_thread
-    
+
     if _metrics_initialized:
         logger.warning("Metrics already initialized, skipping")
         return
-    
+
     try:
         service_name = service_name or os.getenv("OTEL_SERVICE_NAME", "adk-agent")
         metrics_file = metrics_file or os.getenv("OTEL_METRICS_FILE")
-        
+
         if not metrics_file:
             # Default file path: metrics directory in current working directory
             metrics_dir = Path.cwd() / "metrics"
             metrics_dir.mkdir(exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             metrics_file = str(metrics_dir / f"{service_name}_{timestamp}.jsonl")
-        
+
         logger.info(f"Setting up OpenTelemetry metrics for {service_name}")
         logger.info(f"Metrics file: {metrics_file}")
-        
+
         # Create resource
         resource = Resource.create({
             "service.name": service_name,
             "service.version": os.getenv("OTEL_SERVICE_VERSION", "1.0.0"),
             "deployment.environment": os.getenv("OTEL_DEPLOYMENT_ENVIRONMENT", "local"),
         })
-        
+
         # Create JSON file exporter
         json_exporter = JsonFileMetricExporter(metrics_file)
-        
+
         # Create metric reader with periodic export (every 1 seconds)
         reader = PeriodicExportingMetricReader(
             exporter=json_exporter,
             export_interval_millis=1000,  # Export every 1 seconds
         )
-        
+
         # Create meter provider
         meter_provider = MeterProvider(
             resource=resource,
             metric_readers=[reader],
         )
         metrics.set_meter_provider(meter_provider)
-        
+
         meter = metrics.get_meter(__name__)
-        
+
         if enable_system_metrics:
             try:
                 import psutil
-                
+
                 # Process-specific metrics only (system metrics removed per user request)
                 process_cpu_gauge = meter.create_observable_gauge(
                     name="process.cpu.usage",
@@ -615,26 +615,26 @@ def setup_metrics(service_name: Optional[str] = None, metrics_file: Optional[str
                     unit="%",
                     callbacks=[_get_process_cpu_usage],
                 )
-                
+
                 process_memory_gauge = meter.create_observable_gauge(
                     name="process.memory.usage_bytes",
                     description="Process memory usage in bytes",
                     unit="bytes",
                     callbacks=[_get_process_memory_usage],
                 )
-                
+
                 logger.info("Process metrics (CPU/memory) enabled using psutil")
                 logger.info("Note: System-level metrics removed per user request")
-                
+
             except ImportError:
                 logger.warning("psutil not installed, skipping system metrics. Install with: pip install psutil")
             except Exception as e:
                 logger.warning(f"Failed to setup system metrics: {e}")
-        
+
         _metrics_initialized = True
         logger.info("Meter provider configured with JSON file exporter")
         logger.info("OpenTelemetry metrics setup completed")
-        
+
     except Exception as e:
         logger.error(f"Failed to setup metrics: {e}", exc_info=True)
         # Don't raise exception, allow application to continue (metrics are optional)
@@ -663,7 +663,7 @@ _process_obj = None
 
 def _get_process_cpu_usage(callback_options):
     """Callback to get process CPU usage percentage.
-    
+
     Note: psutil.Process().cpu_percent(interval=None) requires two calls to calculate.
     First call returns 0.0, subsequent calls return the percentage since last call.
     We use interval=0.1 to get immediate accurate reading.
@@ -672,13 +672,13 @@ def _get_process_cpu_usage(callback_options):
     try:
         import psutil
         from opentelemetry.metrics import Observation
-        
+
         if _process_obj is None:
             _process_obj = psutil.Process()
             # First call to initialize, returns 0.0
             _process_obj.cpu_percent(interval=0.5)
             return [Observation(0.0)]
-        
+
         # Subsequent calls return actual CPU usage
         # Use interval=0.1 for more accurate reading
         cpu_percent = _process_obj.cpu_percent(interval=0.5)
@@ -698,4 +698,3 @@ def _get_process_memory_usage(callback_options):
         return [Observation(memory_info.rss)]  # Resident Set Size
     except Exception:
         return []
-

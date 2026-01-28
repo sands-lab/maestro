@@ -83,4 +83,3 @@ class PerfEval:
             if durations:
                 summary[label] = sum(durations) / len(durations)
         return summary
-

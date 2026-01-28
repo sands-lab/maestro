@@ -329,7 +329,7 @@ def main() -> int:
         return 0
 
     plot_width = max(7, len(labels) * 0.32)
-    plot_height = 7 
+    plot_height = 7
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     fig, (ax_cpu, ax_mem) = plt.subplots(

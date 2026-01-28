@@ -17,4 +17,3 @@ dependencies = [
     "opentelemetry-instrumentation-vertexai>=2.0b0",
     "python-dotenv>=1.0.0"
 ]
-

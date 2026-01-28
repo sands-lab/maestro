@@ -31,7 +31,7 @@ SEARCH_RESULT_AGENT_PROMPT = """
         - if the user says google shopping, visit this website link is https://www.google.com/search?hl=en&q=<keyword> and click on "shopping" tab
     </Navigation & Searching>
 
-    <Gather Information> 
+    <Gather Information>
         - getting titles of the top 3 products by analyzing the webpage
         - Do not make up 3 products
         - Show title of the products in a markdown format
@@ -40,7 +40,7 @@ SEARCH_RESULT_AGENT_PROMPT = """
     <Key Constraints>
         - Continue until you believe the title, description and attribute information is gathered
         - Do not make up title, description and attribute information
-        - If you can not find the information, convery this information to the user 
+        - If you can not find the information, convery this information to the user
     </Key Constraints>
 
     Please follow these steps to accomplish the task at hand:
