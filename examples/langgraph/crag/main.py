@@ -46,11 +46,7 @@ from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from plugin_monitoring.langgraph_otel import (
+from maestro.telemetry_helpers.langgraph_otel import (
     DEFAULT_ENVIRONMENT,
     AgentFailureCategory,
     AgentRetryTrigger,
@@ -1299,6 +1295,7 @@ def _validate_env(args: argparse.Namespace) -> None:
 def main(argv: Optional[List[str]] = None) -> None:
     args = parse_args(argv)
     _validate_env(args)
+
     if args.questions_file:
         dataset_path = Path(args.questions_file)
         dataset = load_questions_file(dataset_path)
@@ -1339,6 +1336,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         tracer = None
         trace_log_path = None
         provider = None
+
     try:
         metrics_recorder = PsutilMetricsRecorder(
             service_name=TRACE_SERVICE_NAME,
@@ -1357,6 +1355,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         logger.warning("Unable to initialize system metrics recorder: %s", exc)
         metrics_recorder = None
         metrics_log_path = None
+
     judge_llm = None
     if args.evaluator == "llm":
         model_for_judge = args.judge_model or args.generator_model
@@ -1372,6 +1371,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         except Exception as exc:  # pragma: no cover - optional judge
             logger.warning("LLM judge unavailable, falling back to unknown judgements: %s", exc)
             judge_llm = None
+
     try:
         vectorstore = build_retriever(
             seed_urls,
@@ -1482,6 +1482,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                 metrics_recorder.stop()
             if provider:
                 provider.shutdown()
+
     write_run_artifacts(
         results,
         run_id=run_id,
@@ -1491,7 +1492,6 @@ def main(argv: Optional[List[str]] = None) -> None:
         metrics_log_path=metrics_log_path,
         status=run_status,
     )
-
 
 if __name__ == "__main__":  # pragma: no cover
     main()

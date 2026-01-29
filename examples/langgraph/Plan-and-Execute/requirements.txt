@@ -1,3 +1,4 @@
+-e ../../../[telemetry-langgraph]
 langgraph>=0.0.38
 langchain>=0.2.5
 langchain-community>=0.2.5

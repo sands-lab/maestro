@@ -8,6 +8,7 @@ dependencies = [
     "anthropic>=0.39",
     "fastmcp>=0.2.0",
     "google-genai>=1.10.0",
+    "maestro[telemetry]",
     "mcp-agent",
     "mcp-server-bing",
     "mcp-server-fetch>=0.1.4",
@@ -17,5 +18,6 @@ dependencies = [
 ]
 
 [tool.uv.sources]
+maestro = { path = "../../..", editable = true }
 mcp-agent = { git = "https://github.com/chenIshi/mcp-agent", rev = "feat/trace-collection" }
 mcp-server-bing = { git = "https://github.com/leehanchung/bing-search-mcp.git" }
