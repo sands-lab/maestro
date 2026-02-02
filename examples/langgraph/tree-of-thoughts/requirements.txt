@@ -1,3 +1,4 @@
+-e ../../../[telemetry-langgraph]
 langgraph>=0.1.8
 langchain-core>=0.3.14
 langchain-openai>=0.2.3

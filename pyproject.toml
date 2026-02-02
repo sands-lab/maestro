@@ -1,13 +1,30 @@
 [project]
 name = "maestro"
-version = "0.1.0"
-description = "LLM-based Multi-Agent System (MAS) evaluation suite"
 readme = "README.md"
 requires-python = ">=3.10"
+dynamic = ["version", "description"]
 dependencies = []
+
+[project.optional-dependencies]
+cli = ["click>=8.0.0"]
+telemetry = [
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
+    "psutil>=5.9",
+]
+telemetry-langgraph = ["maestro[telemetry]", "langchain-core>=0.3.14"]
+telemetry-adk = ["maestro[telemetry]"]
+all = ["maestro[cli,telemetry,telemetry-langgraph,telemetry-adk]"]
+
+[project.scripts]
+maestro = "maestro.cli.main:cli"
 
 [dependency-groups]
 dev = ["pre-commit>=4.5.1"]
 
 [tool.uv]
 required-version = ">=0.9.0"
+
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"

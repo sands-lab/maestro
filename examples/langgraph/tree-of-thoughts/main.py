@@ -43,11 +43,7 @@ from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated, TypedDict
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from plugin_monitoring.langgraph_otel import (
+from maestro.telemetry_helpers.langgraph_otel import (
     DEFAULT_ENVIRONMENT,
     AgentFailureCategory,
     AgentRetryTrigger,
