@@ -1,0 +1,936 @@
+Loading group from config: demo/handoff/peer_autonomy_handoff_config.json
+Success! Built group: HandoffGroup
+
+Task: Design an executable 4-week launch plan for a community AI learning program (30 participants, mixed beginner/intermediate level, limited budget).
+
+Your final deliverable must include:
+1) clear objectives and success metrics,
+2) week-by-week actions,
+3) key assumptions with confidence levels,
+4) major risks, failure scenarios, and mitigations,
+5) final acceptance criteria.
+
+Quality bar:
+- Claims must be verifiable or explicitly marked as assumptions.
+- Risks must be concrete, not generic.
+- The final plan should be directly actionable by an organizer.
+
+Stop only when the result is complete and internally consistent.
+
+------------------------------------------------------------
+[Turn 1] Agent: strategist
+╭───────────────────────────────────────────────────────────────────────────────── CALL_LLM: openai:gpt-5-mini ──────────────────────────────────────────────────────────────────────────────────╮
+│ ╭─ INPUT ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ [                                                                                                                                                                                          │ │
+│ │   {                                                                                                                                                                                        │ │
+│ │     "role": "system",                                                                                                                                                                      │ │
+│ │     "content": "You are the Strategy Agent. You are an equal peer to the other agents. Your goal is to co-create an executable plan with them.\n\nRules:\n1. In each turn, provide your in │ │
+│ │   },                                                                                                                                                                                       │ │
+│ │   {                                                                                                                                                                                        │ │
+│ │     "role": "user",                                                                                                                                                                        │ │
+│ │     "content": "[USER]: Design an executable 4-week launch plan for a community AI learning program (30 participants, mixed beginner/intermediate level, limited budget).\n\nYour final de │ │
+│ │   }                                                                                                                                                                                        │ │
+│ │ ]                                                                                                                                                                                          │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│ ╭─ OUTPUT ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Proposed top-line objectives & measurable success metrics:                                                                                                                              │ │
+│ │     • Objective: Launch a 4-week community AI learning program for 30 mixed beginner/intermediate participants to achieve practical AI literacy and completed capstone projects. Metrics:  │ │
+│ │       enrollment filled (30) by launch; average weekly attendance ≥80%; program completion (capstone submitted) ≥70% (≥21 participants); average satisfaction score ≥7/10; ≥80% report     │ │
+│ │       increased confidence in at least one AI skill; at least 5 participant-created artifacts posted to a public community space. (All metrics are measurable and should be tracked        │ │
+│ │       weekly.)                                                                                                                                                                             │ │
+│ │  • High-level week-by-week flow (first draft):                                                                                                                                             │ │
+│ │     • Week 1 — Orientation & Foundations: onboarding, baseline assessment, intro lectures (ML/LLM basics), environment setup (Colab/GitHub), pair formation.                               │ │
+│ │     • Week 2 — Tools & Guided Mini-projects: hands-on labs (data prep, prompts, small model usage), mini-projects due Friday; mid-program feedback.                                        │ │
+│ │     • Week 3 — Capstone Development: teams develop capstone (scope, MVP features), office hours, peer reviews, rehearsal.                                                                  │ │
+│ │     • Week 4 — Finalization & Demo Week: final presentations, judging/peer scoring, reflective session, community next-steps (mentorship, repo).                                           │ │
+│ │  • Key assumptions (with confidence levels):                                                                                                                                               │ │
+│ │     • Venue/Platform: Either a free/low-cost physical space or virtual platform (Zoom + Slack) is available. Confidence: medium (0.7). Rationale: many community centers/universities can  │ │
+│ │       offer low-cost rooms—requires confirmation.                                                                                                                                          │ │
+│ │     • Participant devices & connectivity: ≥90% participants have laptops and internet capable of running Colab. Confidence: medium (0.6). This is typical but must be screened.            │ │
+│ │     • Instructor capacity: 2–3 volunteer instructors + 4 volunteers for office hours. Confidence: medium (0.6). Volunteer recruitment needed.                                              │ │
+│ │     • Budget constraint: assume $1,500–$3,000 total for refreshments, small stipends, plus optional cloud credits. Confidence: low (0.5) — budget placeholder to be validated.             │ │
+│ │  • Primary concrete risks and immediate mitigations to confirm:                                                                                                                            │ │
+│ │     • Low show rate (e.g., <20 attendees): mitigate with waitlist, confirmation emails + reminders, small early-bird incentives. Track RSVPs weekly.                                       │ │
+│ │     • Major technical failure during live session (e.g., Zoom outage): mitigate with backup platform link, pre-recorded lab walkthroughs, distributed lab instructions. Run tech check 48  │ │
+│ │       hours prior.                                                                                                                                                                         │ │
+│ │     • Instructor shortage mid-run: mitigate by cross-training volunteers, prepared asynchronous materials, and a priority list of tasks to postpone.                                       │ │
+│ │     • Participant skill mismatch (too heterogeneous): mitigate with optional "beginner bootcamp" materials before week 1 and parallel beginner/intermediate lab tracks.                    │ │
+│ │                                                                                                                                                                                            │ │
+│ │ HANDOFF:fact_checker                                                                                                                                                                       │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│ ╭─ USAGE ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ {                                                                                                                                                                                          │ │
+│ │   "input_tokens": 311,                                                                                                                                                                     │ │
+│ │   "output_tokens": 1677                                                                                                                                                                    │ │
+│ │ }                                                                                                                                                                                          │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+         Output: - Proposed top-line objectives & measurable success metrics:   - Objective: Launch a 4-week community AI learning progra…
+         Handoff → fact_checker
+[Turn 2] Agent: fact_checker
+╭───────────────────────────────────────────────────────────────────────────────── CALL_LLM: openai:gpt-5-mini ──────────────────────────────────────────────────────────────────────────────────╮
+│ ╭─ INPUT ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ [                                                                                                                                                                                          │ │
+│ │   {                                                                                                                                                                                        │ │
+│ │     "role": "system",                                                                                                                                                                      │ │
+│ │     "content": "You are the Fact-Checker Agent. You are fully equal to the other agents. Your responsibility is to identify unclear, unverifiable, or over-assumed claims and correct them │ │
+│ │   },                                                                                                                                                                                       │ │
+│ │   {                                                                                                                                                                                        │ │
+│ │     "role": "user",                                                                                                                                                                        │ │
+│ │     "content": "[USER]: Design an executable 4-week launch plan for a community AI learning program (30 participants, mixed beginner/intermediate level, limited budget).\n\nYour final de │ │
+│ │   }                                                                                                                                                                                        │ │
+│ │ ]                                                                                                                                                                                          │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│ ╭─ OUTPUT ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ Validated / Uncertain assessment (each claim from the strategist draft)                                                                                                                    │ │
+│ │                                                                                                                                                                                            │ │
+│ │  1 Objectives & success metrics                                                                                                                                                            │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: “Metrics: enrollment filled (30) by launch; average weekly attendance ≥80%; program completion ≥70% (≥21); average satisfaction ≥7/10; ≥80% report increased confidence; ≥5      │ │
+│ │    artifacts posted.”                                                                                                                                                                      │ │
+│ │     • Assessment: Partially validated. The metrics are measurable (validated) — attendance, completion, satisfaction, artifacts can be measured with sign-in/Zoom reports, submission      │ │
+│ │       records, surveys, and a public repo. The target values (30, 80%, 70%, 7/10, 80%, 5 artifacts) are assumptions and should be explicit as campaign goals with stated confidence.       │ │
+│ │     • Revision: Mark target numbers as program goals (assumptions) with confidence levels and define how each metric will be measured, who records it, and the measurement cadence.        │ │
+│ │                                                                                                                                                                                            │ │
+│ │  2 High-level week-by-week flow                                                                                                                                                            │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: Week 1 orientation & foundations; Week 2 tools & mini-projects; Week 3 capstone development; Week 4 finalization & demo.                                                         │ │
+│ │     • Assessment: Uncertain. The flow is appropriate as a structure but lacks actionable detail (session lengths, owners, deliverables, templates) required to run the program.            │ │
+│ │     • Revision: Expand into a concrete, day-by-day action list with session agendas, deliverables, owner assignments, time estimates, and tools for each session.                          │ │
+│ │                                                                                                                                                                                            │ │
+│ │  3 Key assumptions (venue/platform, participant devices, instructor capacity, budget)                                                                                                      │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: The specified assumptions and confidences (e.g., 90% have laptops, budget $1,500–$3,000).                                                                                        │ │
+│ │     • Assessment: Uncertain. These are explicit assumptions (good), but confidences are informal and need further justification and thresholds that trigger contingency actions.           │ │
+│ │     • Revision: Turn each into a monitoring item with a numerical threshold (e.g., if fewer than 27 participants have laptops, implement loaner plan) and attach concrete sourcing steps   │ │
+│ │       and alternative plans.                                                                                                                                                               │ │
+│ │                                                                                                                                                                                            │ │
+│ │  4 Primary risks & mitigations (low show rate, technical failure, instructor shortage, skill mismatch)                                                                                     │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: Risks identified and mitigations suggested (reminders, backup links, cross-training, beginner bootcamp).                                                                         │ │
+│ │     • Assessment: Partially validated. The risk types are relevant, but the mitigations are generic and lack triggers, owners, and concrete fallback actions (e.g., who sends reminders,   │ │
+│ │       what is a backup link, where pre-recordings are hosted).                                                                                                                             │ │
+│ │     • Revision: For each risk, add: (a) precise failure trigger (metric & timing), (b) responsible person(s), (c) step-by-step mitigation actions and timeline, (d) resources required.    │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Concrete revisions (actionable changes you should incorporate before final plan)                                                                                                           │ │
+│ │                                                                                                                                                                                            │ │
+│ │ A. Make every target a labeled assumption (ASSUMPTION) with a confidence score and a monitoring threshold.                                                                                 │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Example: ASSUMPTION #1 — 90% of registrants have laptops capable of running Google Colab. Confidence: 0.6. Monitoring: pre-program survey (collect device & browser info).              │ │
+│ │    Threshold/trigger: if <80% confirm capable devices 7 days before start → ACTION: recruit loaner devices or pair participants with volunteers; CANCEL in-person compute-heavy labs if no │ │
+│ │    loaners.                                                                                                                                                                                │ │
+│ │                                                                                                                                                                                            │ │
+│ │ B. Specify measurement methods and owners for each metric.                                                                                                                                 │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Enrollment filled (30): measured via registration form; Owner: Program Manager; cadence: daily until full.                                                                              │ │
+│ │  • Attendance: Zoom attendance & manual sign-in sheet for in-person; Owner: Session facilitator; cadence: per session.                                                                     │ │
+│ │  • Completion: capstone submission to GitHub repo by end of Week 4; Owner: Mentors verify; cadence: final audit day.                                                                       │ │
+│ │  • Satisfaction & confidence: short Google Form after weeks 2 and 4; Owner: Program Admin.                                                                                                 │ │
+│ │  • Artifacts posted: check public community repo or website; Owner: Program Manager.                                                                                                       │ │
+│ │                                                                                                                                                                                            │ │
+│ │ C. Expand week-by-week into executable tasks (example template — adapt to your operating days)                                                                                             │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Pre-launch (Day -21 to Day 0)                                                                                                                                                           │ │
+│ │     • Create registration form (Google Forms) + waitlist; fields for skill level, device capability, timezone. Owner: Outreach Lead. Complete by Day -14.                                  │ │
+│ │     • Recruit instructors/volunteers: post on local channels; interview and confirm 2-3 instructors + 4 office-hour volunteers. Owner: Program Lead. Complete by Day -14.                  │ │
+│ │     • Prepare onboarding materials: syllabus, Code of Conduct, Slack workspace, GitHub repo template, starter Colab notebooks. Owner: Content Lead. Complete by Day -7.                    │ │
+│ │     • Run tech dry-run (Zoom, screen-share, Colab access) with facilitators. Owner: Tech Lead. Complete by Day -2.                                                                         │ │
+│ │     • Send onboarding email with pre-survey (device check, baseline skills quiz). Owner: Program Admin. Send Day -7 and Day -2 reminders.                                                  │ │
+│ │  • Week 1 (Orientation & Foundations)                                                                                                                                                      │ │
+│ │     • Session 1 (2.5 hours): introductions, program expectations, baseline quiz, lecture: AI fundamentals (ML vs. LLMs), environment setup (Colab + GitHub). Deliverable: account          │ │
+│ │       confirmations; pair/team formation. Owner: Lead Instructor.                                                                                                                          │ │
+│ │     • Office hours (2 x 1 hour) for environment issues. Owners: Volunteers.                                                                                                                │ │
+│ │     • Deliverable by Friday: short reflection + one-line project idea. Owner: Participants; track in shared spreadsheet.                                                                   │ │
+│ │  • Week 2 (Tools & Guided Mini-projects)                                                                                                                                                   │ │
+│ │     • Session 2 (2.5 hours): prompt engineering lab + small guided notebook (use public dataset or text generation). Deliverable: completed notebook PR. Owner: Instructor + TA.           │ │
+│ │     • Mid-week mini-office hours: debugging Colab, data prep help.                                                                                                                         │ │
+│ │     • Mini-project due Friday: 1–2 person mini project (MVP), share in Slack channel for peer feedback. Owner: Participants; mentor review within 48 hours.                                │ │
+│ │  • Week 3 (Capstone Development)                                                                                                                                                           │ │
+│ │     • Session 3 (2 hours): capstone scoping workshop; produce project plan (MVP, success criteria, data sources, ethics/privacy checklist). Owner: Instructor.                             │ │
+│ │     • Daily/alternate-day mentor office hours; pairings for peer review. Deliverable: working prototype + README by Friday for rehearsal.                                                  │ │
+│ │     • Checkpoint: mentors mark “on-track” vs “at-risk” projects (use simple rubric). If >30% at-risk → escalate (add mentor hours or reduce scope).                                        │ │
+│ │  • Week 4 (Finalization & Demo Week)                                                                                                                                                       │ │
+│ │     • Session 4 (2 hours): rehearsal & pitch workshop; feedback.                                                                                                                           │ │
+│ │     • Demo day(s): schedule 3–4 minute demos + 5 minutes Q&A per team; judges/peer scores. Owner: Program Lead.                                                                            │ │
+│ │     • Final deliverables: GitHub repo with code & README, 3-minute demo video, short presentation slides, 1-paragraph reflection survey. Acceptance decisions made by judging rubric.      │ │
+│ │     • Post-program: collect satisfaction survey, post artifacts to community page, plan next steps (mentorship list).                                                                      │ │
+│ │                                                                                                                                                                                            │ │
+│ │ D. Roles, time commitments, and capacity planning (concrete)                                                                                                                               │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Program Lead: 8–12 hrs/week pre-launch, 10 hrs during program — overall owner.                                                                                                          │ │
+│ │  • Lead Instructor(s): prepare content 20–30 hrs pre-launch, lead 3 sessions (2.5 hrs each) + grading/mentoring ≈10 hrs/week during program.                                               │ │
+│ │  • Volunteers/TAs (4): 3–5 hrs/week each for office hours, grading, chat moderation.                                                                                                       │ │
+│ │  • Tech Lead: 6–8 hrs pre-launch + on-call during sessions.                                                                                                                                │ │
+│ │  • Make commitments explicit in recruiting calls.                                                                                                                                          │ │
+│ │                                                                                                                                                                                            │ │
+│ │ E. Budget (explicit sample breakdown — label this as ASSUMPTION)                                                                                                                           │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • ASSUMPTION: total budget $1,800 (confidence: 0.5 — adjust to local prices).                                                                                                             │ │
+│ │     • Venue (if paid): $0–300 (community center/university may be free).                                                                                                                   │ │
+│ │     • Refreshments (for 4 weeks): $150.                                                                                                                                                    │ │
+│ │     • Cloud credits & paid APIs for demos: $200.                                                                                                                                           │ │
+│ │     • Printed materials or swag: $100.                                                                                                                                                     │ │
+│ │     • Small stipends or gift cards (e.g., $30 × 10 for volunteers): $300.                                                                                                                  │ │
+│ │     • Marketing (ads, printing): $100.                                                                                                                                                     │ │
+│ │     • Contingency: $150.                                                                                                                                                                   │ │
+│ │     • Admin costs (domestic transfers, fees): $50.                                                                                                                                         │ │
+│ │     • Owner: Program Lead to finalize and sign off on budget pre-launch.                                                                                                                   │ │
+│ │                                                                                                                                                                                            │ │
+│ │ F. Concrete risk triggers, owners, and mitigations                                                                                                                                         │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Risk: Low enrollment (<20 confirmed) two weeks before start.                                                                                                                            │ │
+│ │     • Trigger: confirmed <20 at Day -14.                                                                                                                                                   │ │
+│ │     • Owner: Outreach Lead.                                                                                                                                                                │ │
+│ │     • Actions: extend registration window by 1 week, run targeted outreach to past participants and partners, offer small early-bird incentive (e.g., $10 gift card), convert in-person    │ │
+│ │       capacity into hybrid slots.                                                                                                                                                          │ │
+│ │  • Risk: Major live-platform outage during session.                                                                                                                                        │ │
+│ │     • Trigger: platform down at session start or within 10 min.                                                                                                                            │ │
+│ │     • Owner: Tech Lead.                                                                                                                                                                    │ │
+│ │     • Actions: switch meeting link to backup (Jitsi/Google Meet), post recorded walkthrough to Slack, continue using Slack + GitHub for asynchronous lab work. Pre-upload pre-recorded lab │ │
+│ │       walkthrough to YouTube (unlisted) before each session.                                                                                                                               │ │
+│ │  • Risk: Participant incurs unexpected cloud/API charges (real money).                                                                                                                     │ │
+│ │     • Trigger: participant requests to use paid API keys or attempts to use personal paid credits without guidance.                                                                        │ │
+│ │     • Owner: Instructor.                                                                                                                                                                   │ │
+│ │     • Actions: enforce policy: use free Colab runtime and pre-authorized organization API keys only. Provide step-by-step with enforced usage caps; inform participants in onboarding.     │ │
+│ │  • Risk: Data privacy or legal breach (participant uploads PII).                                                                                                                           │ │
+│ │     • Trigger: participant repo contains PII or copyrighted data.                                                                                                                          │ │
+│ │     • Owner: Lead Instructor.                                                                                                                                                              │ │
+│ │     • Actions: include an ethics & data checklist in capstone rubric; require sign-off on acceptable data sources; remove offending content and assist with anonymization.                 │ │
+│ │  • Risk: >30% capstones “at-risk” by Week 3 checkpoint.                                                                                                                                    │ │
+│ │     • Trigger: mentors flag more than 9 teams (if teams of 1) OR 30% of participants.                                                                                                      │ │
+│ │     • Owner: Program Lead + Mentors.                                                                                                                                                       │ │
+│ │     • Actions: mandate scope reduction (MVP focus), add mentor hours, allow substituting demo with a documented lab deliverable.                                                           │ │
+│ │                                                                                                                                                                                            │ │
+│ │ G. Capstone acceptance rubric (actionable)                                                                                                                                                 │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Items (each scored 0–4):                                                                                                                                                                │ │
+│ │     • Functionality & Demonstration (0–4): MVP works and demo shows actual outputs.                                                                                                        │ │
+│ │     • Technical Skill (0–4): appropriate use of tools/notebooks; reproducible steps.                                                                                                       │ │
+│ │     • Documentation & Repro (0–4): README, setup steps, data provenance, ethics notes.                                                                                                     │ │
+│ │     • Clarity & Impact (0–4): clear problem statement and value.                                                                                                                           │ │
+│ │     • Team Reflection & Learning (0–4): short reflection showing learning gains.                                                                                                           │ │
+│ │  • Pass threshold: aggregate score ≥60% (≥12/20) and repo is public (or shared with organizers) with reproducible notebook. Mark this as program acceptance criteria.                      │ │
+│ │                                                                                                                                                                                            │ │
+│ │ H. Final acceptance criteria (program-level)                                                                                                                                               │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Minimums to call the launch “successful”:                                                                                                                                               │ │
+│ │     • Enrollment: at least 24 registered and >=20 active participants at program start (ASSUMPTION target; confidence 0.6).                                                                │ │
+│ │     • Attendance: average weekly attendance ≥70% (≥21 participants) — relax original 80% to 70% (assumption, confidence 0.6).                                                              │ │
+│ │     • Completion: ≥70% submission rate (≥21 capstones) — maintain as goal (confidence 0.5).                                                                                                │ │
+│ │     • Satisfaction: average ≥7/10 on final survey.                                                                                                                                         │ │
+│ │     • Artifacts: ≥5 public artifacts (repos/notebooks/demos) posted.                                                                                                                       │ │
+│ │     • At least 75% of capstones meet capstone rubric pass threshold.                                                                                                                       │ │
+│ │     • If any one of Enrollment or Completion fails below thresholds, consider the launch unsuccessful and iterate (document causes, run a 6–8 week remediation batch).                     │ │
+│ │                                                                                                                                                                                            │ │
+│ │ I. Communication templates & cadence (concrete)                                                                                                                                            │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Pre-launch: registration confirmation + onboarding pack 7 days before start and a reminder 48 hours before first session.                                                               │ │
+│ │  • Weekly: session reminder 48 hours prior + day-of morning reminder; post-session “what to do this week” message + office-hour schedule within 24 hours of session end.                   │ │
+│ │  • Post-program: aggregate survey and “next steps” email within 48 hours of final demo day.                                                                                                │ │
+│ │  • Owner: Program Admin. Use Mailchimp or Gmail templates + Slack announcements.                                                                                                           │ │
+│ │                                                                                                                                                                                            │ │
+│ │ J. Monitoring dashboard (minimum)                                                                                                                                                          │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Google Sheet with tabs: Registrations, Attendance (per session), Capstone status (on-track, at-risk, done), Volunteer roster, Budget spend, Survey results.                             │ │
+│ │  • Owner: Program Admin to update after each session; Program Lead reviews weekly.                                                                                                         │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Next step recommendation                                                                                                                                                                   │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • The strategist’s structure is a good start but has execution gaps (missing day-level tasks, owners, concrete budget lines, and explicit triggers for risks). These gaps affect          │ │
+│ │    runnability and should be addressed before publishing the final plan.                                                                                                                   │ │
+│ │                                                                                                                                                                                            │ │
+│ │ HANDOFF:challenger                                                                                                                                                                         │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│ ╭─ USAGE ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ {                                                                                                                                                                                          │ │
+│ │   "input_tokens": 889,                                                                                                                                                                     │ │
+│ │   "output_tokens": 3983                                                                                                                                                                    │ │
+│ │ }                                                                                                                                                                                          │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+         Output: Validated / Uncertain assessment (each claim from the strategist draft)  1) Objectives & success metrics - Claim: “Metri…
+         Handoff → challenger
+[Turn 3] Agent: challenger
+╭───────────────────────────────────────────────────────────────────────────────── CALL_LLM: openai:gpt-5-mini ──────────────────────────────────────────────────────────────────────────────────╮
+│ ╭─ INPUT ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ [                                                                                                                                                                                          │ │
+│ │   {                                                                                                                                                                                        │ │
+│ │     "role": "system",                                                                                                                                                                      │ │
+│ │     "content": "You are the Challenger Agent. You are fully equal to the other agents. Your responsibility is to actively surface counterexamples, edge cases, and failure scenarios, then │ │
+│ │   },                                                                                                                                                                                       │ │
+│ │   {                                                                                                                                                                                        │ │
+│ │     "role": "user",                                                                                                                                                                        │ │
+│ │     "content": "[USER]: Design an executable 4-week launch plan for a community AI learning program (30 participants, mixed beginner/intermediate level, limited budget).\n\nYour final de │ │
+│ │   }                                                                                                                                                                                        │ │
+│ │ ]                                                                                                                                                                                          │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│ ╭─ OUTPUT ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ Risk 1 — Insufficient participant compute / Colab access during live labs                                                                                                                  │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Concrete failure scenario: During Week 1 setup or Week 2 labs, ≥20% of participants cannot run Colab notebooks (no laptop, incompatible browser, or Colab quota errors), causing them   │ │
+│ │    to be unable to complete hands-on work and dropping out.                                                                                                                                │ │
+│ │  • Trigger (metric & timing): Pre-launch survey shows <80% of registrants report a Colab-capable device by Day -7 OR during a live session >6 participants report "cannot run notebook"    │ │
+│ │    within first 20 minutes.                                                                                                                                                                │ │
+│ │  • Mitigations (owners & actions):                                                                                                                                                         │ │
+│ │     1 Pre-launch verification: Program Admin runs a device/browser check in the Day -7 onboarding email with a one-click test notebook link and collects results. If <80% pass → escalate. │ │
+│ │       (Owner: Program Admin; deadline Day -7)                                                                                                                                              │ │
+│ │     2 Loaner plan: Arrange 2–6 loaner laptops via partner org / university library for in-person pick-up or a quick borrowing policy. (Owner: Outreach Lead; target secured by Day -5;     │ │
+│ │       cost estimate: $50–$200 one-time deposit/logistics).                                                                                                                                 │ │
+│ │     3 Pairing fallback: Pair participants without capability with volunteers/peers for paired programming; ensure pairs formed in Week 1. (Owner: Lead Instructor; implement during        │ │
+│ │       Session 1)                                                                                                                                                                           │ │
+│ │     4 Low-tech fallbacks: Prepare CPU-only, small-dataset notebooks and pre-run output artifacts (so participants can complete exercises by editing outputs) and step-by-step screenshots. │ │
+│ │       Host unlisted walkthrough videos. (Owner: Tech Lead + Content Lead; produce by Day -2)                                                                                               │ │
+│ │     5 Preventative sandboxing: Pre-test major notebooks for Colab quota limits and modify to use smaller samples or time-limited exercises. (Owner: Tech Lead; test by Day -2)             │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Risk 2 — API / cloud quota exhaustion or cost surprise for participants                                                                                                                    │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Concrete failure scenario: During Week 2–3, multiple participants run experiments that exhaust a shared API key quota or accidentally incur paid API charges, causing labs to halt or   │ │
+│ │    participants to accrue unexpected bills.                                                                                                                                                │ │
+│ │  • Trigger: Any participant reports an API quota error or requests use of a paid API key; or billing alert triggered on organizer account.                                                 │ │
+│ │  • Mitigations:                                                                                                                                                                            │ │
+│ │     1 Policy & configuration: Enforce a "no personal paid keys" policy in onboarding. Provide centrally-managed org API keys with strict per-user throttling or limits; set hard quotas    │ │
+│ │       per key. (Owner: Tech Lead; action by Day -3)                                                                                                                                        │ │
+│ │     2 Funding buffer: Reserve a small contingency cloud/API budget ($100–$300 as part of budget ASSUMPTION) only to be used by Tech Lead under defined circumstances. (Owner: Program      │ │
+│ │       Lead; allocate pre-launch)                                                                                                                                                           │ │
+│ │     3 Alternative labs: Provide equivalent exercises that use local models, open-source small LLMs, or pre-generated outputs that don't require live API calls. (Owner: Content Lead;      │ │
+│ │       ready by Day -2)                                                                                                                                                                     │ │
+│ │     4 Education: Explicit, short onboarding note on API cost risks with examples and an acknowledgement checkbox. (Owner: Program Admin; include in Day -7 email)                          │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Risk 3 — Volunteer / instructor dropout or insufficient mentoring capacity                                                                                                                 │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Concrete failure scenario: One lead instructor or ≥2 volunteers withdraw less than 72 hours before a session, leaving office hours and grading uncovered and reducing participant       │ │
+│ │    support.                                                                                                                                                                                │ │
+│ │  • Trigger: Volunteer misses scheduled shifts twice in a week or formally withdraws with <72h notice.                                                                                      │ │
+│ │  • Mitigations:                                                                                                                                                                            │ │
+│ │     1 Overhire: Recruit +25–50% more volunteers than minimum (if you need 4 TAs, recruit 5–6). (Owner: Outreach Lead; complete by Day -14)                                                 │ │
+│ │     2 Formal commitments: Require a one-page role agreement with expected hours and minimum notice for withdrawal; offer small stipend or gift card conditioned on completion. (Owner:     │ │
+│ │       Program Lead; signed by volunteers Day -14)                                                                                                                                          │ │
+│ │     3 Role modularization: Document step-by-step procedures for critical tasks (moderating Slack, running office hours, grading rubric) so backups can take over quickly. Keep a volunteer │ │
+│ │       handbook. (Owner: Tech Lead + Content Lead; produce by Day -7)                                                                                                                       │ │
+│ │     4 Emergency pool: Identify 2–3 local backup volunteers (alumni, partner orgs) who agree to be on-call with 24–48 hour notice. (Owner: Program Lead)                                    │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Risk 4 — High attrition or engagement drop mid-program                                                                                                                                     │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Concrete failure scenario: Attendance falls week-over-week by >20% and completion rates drop below 60% by Week 3, undermining the capstone pipeline.                                    │ │
+│ │  • Trigger: Attendance down >20% between any two successive sessions or >25% of participants flagged “at-risk” at Week 3 checkpoint.                                                       │ │
+│ │  • Mitigations:                                                                                                                                                                            │ │
+│ │     1 Early detection: Track attendance in the dashboard after every session and run a “who’s missing” list. (Owner: Program Admin; update within 24 hours)                                │ │
+│ │     2 Rapid re-engagement: Mentors call or message absent participants within 48 hours offering help, flexible deadlines, or pairing. (Owner: Mentors; action within 48 hours)             │ │
+│ │     3 Re-scoping: For at-risk projects, require a 48-hour MVP re-scope meeting in Week 3, with mandatory mentor time allocated. (Owner: Lead Instructor; enforce Week 3)                   │ │
+│ │     4 Micro-incentives: Offer small milestone rewards (digital badges, shout-outs, eligibility for final demo slots) to keep participants motivated. (Owner: Program Lead)                 │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Risk 5 — Legal / privacy / IP issues with participant datasets or outputs                                                                                                                  │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Concrete failure scenario: A capstone repo contains PII or copyrighted data (e.g., scraped forum posts), exposing the program to legal risk and forcing removals mid-demo.              │ │
+│ │  • Trigger: Any submission flagged by mentor or reviewer for containing PII or non-consented copyrighted material.                                                                         │ │
+│ │  • Mitigations:                                                                                                                                                                            │ │
+│ │     1 Pre-approval: Require all capstone projects to submit a short data provenance form by start of Week 3. Projects using external datasets must cite source and license. (Owner: Lead   │ │
+│ │       Instructor; forms due Day 1 of Week 3)                                                                                                                                               │ │
+│ │     2 Pre-approved dataset list: Provide a curated list of safe, public-domain datasets and small sample datasets for capstones. (Owner: Content Lead; ready by Day -7)                    │ │
+│ │     3 Ethics checklist and sign-off: Add an ethics/data checkbox before final submission; violation requires remediation before demo. (Owner: Lead Instructor)                             │ │
+│ │     4 Rapid takedown & remediation: If PII found, remove content, assist the team to anonymize data or replace dataset, and postpone demo if necessary. (Owner: Program Lead)              │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Edge-case risks worth calling out (brief)                                                                                                                                                  │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Accessibility failures: Participants with visual/hearing impairments may be excluded if captions, transcripts, and accessible materials aren’t prepared. Mitigate by providing captions │ │
+│ │    for recordings, alt text, and an accommodation request form on Day -14. (Owner: Program Admin)                                                                                          │ │
+│ │  • Timezone / scheduling conflicts: If >15% participants are remote in widely different timezones, live sessions will be poorly attended; mitigate by scheduling alternating session times │ │
+│ │    or making sessions fully asynchronous with weekly live check-ins. (Owner: Program Lead)                                                                                                 │ │
+│ │  • Judge / demo bias: If reviewers are not diverse or rubric not calibrated, capstone scoring is inconsistent. Mitigate by training judges on rubric, anonymizing submissions where        │ │
+│ │    possible, and using multiple reviewers (≥2) per demo. (Owner: Program Lead)                                                                                                             │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Key assumptions that must be verified before finalizing the plan (high priority)                                                                                                           │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • ASSUMPTION A — Device access: ≥80% of registrants have Colab-capable devices. Verification: run device/browser test in Day -7 survey and report percentage. (Deadline: Day -7; Owner:   │ │
+│ │    Program Admin) — If false, trigger loaner/paired fallback.                                                                                                                              │ │
+│ │  • ASSUMPTION B — Volunteer/instructor capacity: 2 lead instructors + 4 volunteers confirmed and committed. Verification: signed role agreements with availability calendar. (Deadline:    │ │
+│ │    Day -14; Owner: Outreach Lead) — If false, increase recruitment or reduce cohort size.                                                                                                  │ │
+│ │  • ASSUMPTION C — Budget availability: the $1,800 budget (or actual local budget) is secured and accessible. Verification: Program Lead obtains written approval/transfer of funds and     │ │
+│ │    confirms cloud credit access. (Deadline: Day -14; Owner: Program Lead) — If false, reprioritize spend (no stipends/cloud credits first).                                                │ │
+│ │  • ASSUMPTION D — Venue/platform stability: backup meeting tool and recordings hosting verified. Verification: tech dry-run including pre-uploaded videos and backup Jitsi/Google Meet     │ │
+│ │    link tested. (Deadline: Day -2; Owner: Tech Lead)                                                                                                                                       │ │
+│ │  • ASSUMPTION E — Participant baseline skills distribution fits mixed beginner/intermediate model (i.e., not skewed extreme beginner or advanced). Verification: baseline skills quiz      │ │
+│ │    results analyzed by Day -7; if >60% are beginners or >40% advanced, adjust tracks or content pacing. (Deadline: Day -7; Owner: Content Lead)                                            │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Concrete verification tasks to assign now (actionable)                                                                                                                                     │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Program Admin: Send Day -14 registration close reminder + Day -7 device/browser test link and baseline quiz. Report results in dashboard within 48 hours of responses. (Deadline:       │ │
+│ │    immediate)                                                                                                                                                                              │ │
+│ │  • Outreach Lead: Obtain signed role agreements from all instructors/volunteers and confirm backup volunteers. Report headcount and weekly availability by Day -14.                        │ │
+│ │  • Program Lead: Confirm budget and reserve contingency cloud/API funds; secure any pledged in-kind loaners. Report by Day -14.                                                            │ │
+│ │  • Tech Lead: Perform a full tech dry-run (Zoom + Colab notebooks + backup link + upload at least one unlisted walkthrough video) and report issues by Day -2.                             │ │
+│ │  • Content Lead: Publish pre-work materials (beginner primer + ethics checklist + pre-approved datasets) by Day -7.                                                                        │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Next step (based on what I found) Several core assumptions above remain unverified (devices, volunteers, and budget). These are blockers for a reliable executable launch. The immediate   │ │
+│ │ next action is to verify those assumptions with concrete checks listed here so we can finalize contingency assignments and budget line-items.                                              │ │
+│ │                                                                                                                                                                                            │ │
+│ │ HANDOFF:fact_checker                                                                                                                                                                       │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│ ╭─ USAGE ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ {                                                                                                                                                                                          │ │
+│ │   "input_tokens": 3589,                                                                                                                                                                    │ │
+│ │   "output_tokens": 3535                                                                                                                                                                    │ │
+│ │ }                                                                                                                                                                                          │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+         Output: Risk 1 — Insufficient participant compute / Colab access during live labs - Concrete failure scenario: During Week 1 set…
+         Handoff → fact_checker
+[Turn 4] Agent: fact_checker
+╭───────────────────────────────────────────────────────────────────────────────── CALL_LLM: openai:gpt-5-mini ──────────────────────────────────────────────────────────────────────────────────╮
+│ ╭─ INPUT ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ [                                                                                                                                                                                          │ │
+│ │   {                                                                                                                                                                                        │ │
+│ │     "role": "system",                                                                                                                                                                      │ │
+│ │     "content": "You are the Fact-Checker Agent. You are fully equal to the other agents. Your responsibility is to identify unclear, unverifiable, or over-assumed claims and correct them │ │
+│ │   },                                                                                                                                                                                       │ │
+│ │   {                                                                                                                                                                                        │ │
+│ │     "role": "user",                                                                                                                                                                        │ │
+│ │     "content": "[USER]: Design an executable 4-week launch plan for a community AI learning program (30 participants, mixed beginner/intermediate level, limited budget).\n\nYour final de │ │
+│ │   }                                                                                                                                                                                        │ │
+│ │ ]                                                                                                                                                                                          │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│ ╭─ OUTPUT ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ Validated / Uncertain assessment (summary of the current plan's main claims, and what must be changed)                                                                                     │ │
+│ │                                                                                                                                                                                            │ │
+│ │  1 Enrollment & attendance targets                                                                                                                                                         │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: Fill 30 seats; average weekly attendance ≥80% (then revised to 70%).                                                                                                             │ │
+│ │     • Assessment: Uncertain. These are reasonable goals but inconsistent within the plan and are assumptions, not verified facts.                                                          │ │
+│ │     • Concrete revision: Pick a single, explicit target and label it an ASSUMPTION with confidence and a monitoring trigger. Example: ASSUMPTION — cohort target = 30 registered; minimum  │ │
+│ │       acceptable enrollment = 24 registered. Confidence 0.6. Trigger: if registered <24 at Day -14 → invoke outreach plan. Attendance target: set to average weekly attendance ≥70% (21    │ │
+│ │       participants). Monitoring method: Zoom attendance report / in-person sign-in after each session (Owner: Program Admin). Mark as ASSUMPTION, confidence 0.6.                          │ │
+│ │                                                                                                                                                                                            │ │
+│ │  2 Completion & satisfaction metrics                                                                                                                                                       │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: Completion ≥70% (≥21 capstones); satisfaction ≥7/10; ≥5 artifacts posted.                                                                                                        │ │
+│ │     • Assessment: Valid as measurable targets but are assumptions and need owners and measurement methods.                                                                                 │ │
+│ │     • Concrete revision: State measurement methods and cadence: Capstone submission counted via GitHub repo PRs by end of Week 4 (Owner: Mentors verify, Program Admin records).           │ │
+│ │       Satisfaction measured via Google Form Week 4 within 48 hours (Owner: Program Admin). Artifacts counted in public repo / community page (Owner: Program Lead). Label as ASSUMPTIONS   │ │
+│ │       with confidences (e.g., 0.5–0.7).                                                                                                                                                    │ │
+│ │                                                                                                                                                                                            │ │
+│ │  3 Budget                                                                                                                                                                                  │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: Budget assumed $1,500–$3,000; later a sample $1,800 breakdown given.                                                                                                             │ │
+│ │     • Assessment: Uncertain / unverifiable until funds are confirmed. Budget items (cloud credits, stipends) are plausible but must be confirmed or reduced.                               │ │
+│ │     • Concrete revision: Make budget a hard precondition: Program Lead must confirm and post a signed budget allocation by Day -14. Provide two budget scenarios (bare-minimum and         │ │
+│ │       recommended) with exact line items and costs, and indicate which line items are discretionary (stipends, swag) vs essential (cloud contingency, volunteer reimbursements).           │ │
+│ │                                                                                                                                                                                            │ │
+│ │  4 Device & Colab capability                                                                                                                                                               │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: ≥90%/≥80% participants have Colab-capable laptops (varied figures).                                                                                                              │ │
+│ │     • Assessment: Uncertain but measurable.                                                                                                                                                │ │
+│ │     • Concrete revision: Standardize to ASSUMPTION: ≥80% have capable devices (confidence 0.6). Monitoring: Day -7 device/browser test (one-click notebook). Trigger/threshold and         │ │
+│ │       contingency plan must be recorded (if <80% pass → loaner / pairs / low-tech fallbacks). Owner: Program Admin.                                                                        │ │
+│ │                                                                                                                                                                                            │ │
+│ │  5 Staffing & volunteer capacity                                                                                                                                                           │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: 2–3 lead instructors + 4 volunteers; hours estimates given.                                                                                                                      │ │
+│ │     • Assessment: Partially validated; plausible but must be committed and documented.                                                                                                     │ │
+│ │     • Concrete revision: Convert to requirement: get signed role commitments by Day -14 for: Program Lead (owner), 2 Lead Instructors (each committed to content & 3 sessions), 4 TAs      │ │
+│ │       (office hours/moderation), Tech Lead. If commitments missing, reduce cohort size or compress scope. Owner: Outreach Lead.                                                            │ │
+│ │                                                                                                                                                                                            │ │
+│ │  6 Week-by-week structure                                                                                                                                                                  │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: Four-week flow (Orientation → Tools → Capstone → Demo).                                                                                                                          │ │
+│ │     • Assessment: Valid as a high-level structure, but currently lacks exact session times, agendas, and deliverables (actionability gap).                                                 │ │
+│ │     • Concrete revision: For each week produce a session agenda with exact duration (e.g., 2.5 hours), minute-level outline (intro 10m, lecture 40m, lab 60m, Q&A 30m, wrap 10m),          │ │
+│ │       deliverable due dates, and owners. Include office-hour schedule and expected volunteer coverage per slot.                                                                            │ │
+│ │                                                                                                                                                                                            │ │
+│ │  7 Risk mitigations                                                                                                                                                                        │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: Risks and mitigations listed (low show-rate, technical outage, instructor shortage, data/privacy).                                                                               │ │
+│ │     • Assessment: Partially validated—appropriate but some mitigations lack explicit triggers, owners, and step-by-step actions.                                                           │ │
+│ │     • Concrete revision: For each risk, add: (a) numeric trigger, (b) owner, (c) stepwise mitigation checklist with deadlines and communication templates, (d) resource estimates.         │ │
+│ │       Example: “Low enrollment” trigger = confirmed <24 at Day -14; actions within 48h include targeted outreach email + partner call + 7-day extension + $10 early-bird incentive (owner: │ │
+│ │       Outreach Lead).                                                                                                                                                                      │ │
+│ │                                                                                                                                                                                            │ │
+│ │  8 Capstone acceptance rubric and program acceptance criteria                                                                                                                              │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: Rubric (5 items, 0–4) and pass threshold ≥60% (12/20); program-level success criteria listed but inconsistent.                                                                   │ │
+│ │     • Assessment: Valid foundation but must be consistent and fully agreed upon.                                                                                                           │ │
+│ │     • Concrete revision: Finalize rubric weights, ensure pass threshold applies per-team and that program-level success thresholds are consistent (e.g., completion rate, pass rate,       │ │
+│ │       attendance). For example: Program success = (1) ≥24 registered; (2) average attendance ≥70%; (3) ≥70% completion; (4) ≥60% of capstones pass rubric; (5) satisfaction ≥7/10. Make    │ │
+│ │       these explicit ASSUMPTIONS with confidence levels.                                                                                                                                   │ │
+│ │                                                                                                                                                                                            │ │
+│ │   9 Legal / privacy requirements                                                                                                                                                           │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: Ethics checklist and data provenance required.                                                                                                                                   │ │
+│ │     • Assessment: Valid and necessary.                                                                                                                                                     │ │
+│ │     • Concrete revision: Add a mandatory “Data & Ethics Form” due Day 1 of Week 3 for all capstone projects; list required fields (dataset source + license, consent status, PII check,    │ │
+│ │       anonymization plan). Owner: Lead Instructor. If form missing or flagged, remediate before demo.                                                                                      │ │
+│ │                                                                                                                                                                                            │ │
+│ │  10 Accessibility & timezone accommodations                                                                                                                                                │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Claim: Briefly mentioned but not operationalized.                                                                                                                                       │ │
+│ │     • Assessment: Uncertain — needs concrete processes.                                                                                                                                    │ │
+│ │     • Concrete revision: Add an accommodation request form in registration; set process to provide captions (auto-generated + human review), alt text on shared materials, and             │ │
+│ │       asynchronous alternatives for participants >3 timezones apart or who cannot attend live. Owner: Program Admin / Content Lead.                                                        │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Concrete revisions / additions to incorporate before final plan is published (actionable checklist with owners & deadlines)                                                                │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Unify targets and label them ASSUMPTION with confidence:                                                                                                                                │ │
+│ │     • Program Lead: publish final targets (enrollment, attendance, completion, satisfaction, artifacts) by Day -14. Include measurement method and data owner.                             │ │
+│ │  • Budget confirmation:                                                                                                                                                                    │ │
+│ │     • Program Lead: obtain signed budget approval and post actual numbers + bank/account access for stipend/cloud credits by Day -14. If not approved, publish trimmed “bare-minimum”      │ │
+│ │       budget and which items will be cut.                                                                                                                                                  │ │
+│ │  • Volunteer commitments:                                                                                                                                                                  │ │
+│ │     • Outreach Lead: obtain signed role agreements (hours, minimum notice) from all instructors/volunteers by Day -14. Provide names, contact info, backup pool.                           │ │
+│ │  • Device verification:                                                                                                                                                                    │ │
+│ │     • Program Admin: send Day -7 device/browser test and baseline quiz; publish results in dashboard within 48 hours. If <80% pass, enact loaner/pairing/low-tech plan.                    │ │
+│ │  • Tech dry-run:                                                                                                                                                                           │ │
+│ │     • Tech Lead: conduct full dry-run with instructors and one TA by Day -2; produce a “tech readiness” checklist (backup link, unlisted video uploaded, tested API keys with quotas, Zoom │ │
+│ │       breakout script) and confirm green/yellow/red status.                                                                                                                                │ │
+│ │  • Detailed session agendas & deliverables:                                                                                                                                                │ │
+│ │     • Content Lead & Lead Instructors: produce minute-level agendas and lab notebooks for each session by Day -7. Include explicit deliverables and PR/submit flows for each deadline.     │ │
+│ │  • Risk triggers & playbooks:                                                                                                                                                              │ │
+│ │     • Program Lead & Tech Lead: produce 1-page playbooks for top 5 risks (low enrollment, Colab failures, API costs, volunteer dropout, PII) with trigger thresholds, stepwise actions,    │ │
+│ │       templates for participant/volunteer communications, and owners. Due Day -7.                                                                                                          │ │
+│ │  • Capstone process & rubric finalization:                                                                                                                                                 │ │
+│ │     • Lead Instructor: finalize rubric (weights, pass threshold) and publish rubric + example “good” and “fixable” sample repos by Day -7.                                                 │ │
+│ │  • Communication templates:                                                                                                                                                                │ │
+│ │     • Program Admin: prepare and pre-fill registration confirmation, pre-work, reminder (48h), day-of morning reminder, post-session summary, mid-program check-in, and post-program       │ │
+│ │       survey templates. Due Day -7.                                                                                                                                                        │ │
+│ │  • Monitoring dashboard:                                                                                                                                                                   │ │
+│ │     • Program Admin: create Google Sheet dashboard with required tabs (Registrations, Attendance, Capstone status, Volunteers, Budget, Surveys) and reporting routines. Update within 24h  │ │
+│ │       of each session. Due immediately.                                                                                                                                                    │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Remaining unverifiable or inconsistent items that must be resolved now (explicit)                                                                                                          │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Inconsistent attendance target (80% vs 70%): choose and publish one figure. (Owner: Program Lead; deadline Day -14)                                                                     │ │
+│ │  • Budget not secured: confirm or publish minimum budget scenario. (Owner: Program Lead; deadline Day -14)                                                                                 │ │
+│ │  • Volunteer commitments not yet signed: secure and list backups. (Owner: Outreach Lead; deadline Day -14)                                                                                 │ │
+│ │  • Device capability assurance: results of Day -7 device test required to activate loaner plan. (Owner: Program Admin; deadline Day -7)                                                    │ │
+│ │  • API/cloud access & quota control: Tech Lead must confirm keys, quotas, and alerts. (Owner: Tech Lead; deadline Day -3)                                                                  │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Final assessment and routing decision                                                                                                                                                      │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • The strategist produced a reasonable high-level structure; the challenger surfaced concrete operational risks and verification tasks. Several important assumptions remain unverified   │ │
+│ │    (budget, volunteers, devices) and there are a few unresolved inconsistencies (attendance target, final acceptance thresholds). These are execution and structural gaps that need        │ │
+│ │    strategist attention to produce a final, internally consistent, day-by-day execution plan with signed commitments and finalized numbers.                                                │ │
+│ │                                                                                                                                                                                            │ │
+│ │ HANDOFF:strategist                                                                                                                                                                         │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│ ╭─ USAGE ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ {                                                                                                                                                                                          │ │
+│ │   "input_tokens": 5709,                                                                                                                                                                    │ │
+│ │   "output_tokens": 2865                                                                                                                                                                    │ │
+│ │ }                                                                                                                                                                                          │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+         Output: Validated / Uncertain assessment (summary of the current plan's main claims, and what must be changed)  1) Enrollment & …
+         Handoff → strategist
+[Turn 5] Agent: strategist
+╭───────────────────────────────────────────────────────────────────────────────── CALL_LLM: openai:gpt-5-mini ──────────────────────────────────────────────────────────────────────────────────╮
+│ ╭─ INPUT ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ [                                                                                                                                                                                          │ │
+│ │   {                                                                                                                                                                                        │ │
+│ │     "role": "system",                                                                                                                                                                      │ │
+│ │     "content": "You are the Strategy Agent. You are an equal peer to the other agents. Your goal is to co-create an executable plan with them.\n\nRules:\n1. In each turn, provide your in │ │
+│ │   },                                                                                                                                                                                       │ │
+│ │   {                                                                                                                                                                                        │ │
+│ │     "role": "user",                                                                                                                                                                        │ │
+│ │     "content": "[USER]: Design an executable 4-week launch plan for a community AI learning program (30 participants, mixed beginner/intermediate level, limited budget).\n\nYour final de │ │
+│ │   }                                                                                                                                                                                        │ │
+│ │ ]                                                                                                                                                                                          │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│ ╭─ OUTPUT ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Incremental contribution (final consolidated, actionable 4-week launch plan)                                                                                                            │ │
+│ │     • I converted prior drafts, verifications, and challenges into a single, internally consistent launch plan that an organizer can execute. It includes: clear objectives & measurable   │ │
+│ │       metrics, day-by-day pre-launch and week-by-week actions with owners and deadlines, explicit assumptions with confidence scores and monitoring triggers, concrete risks with numeric  │ │
+│ │       triggers and stepwise mitigations (owners & timelines), two budget scenarios (bare-minimum and recommended) marked as assumptions, capstone rubric, communications cadence, and      │ │
+│ │       final acceptance criteria.                                                                                                                                                           │ │
+│ │     • Every target or resource that is not externally confirmed is labelled ASSUMPTION with a confidence score and a specific verification action and deadline. Measurement methods and    │ │
+│ │       owners are assigned for all metrics.                                                                                                                                                 │ │
+│ │     • The plan is designed for a 30-person mixed beginner/intermediate cohort but includes minimum-acceptable thresholds (e.g., minimum enrollment = 24) and scaling guidance if           │ │
+│ │       verifications fail.                                                                                                                                                                  │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Executive summary — objectives & measurable success metrics                                                                                                                                │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Objective: Run a practical 4-week community AI learning program for ~30 participants (mixed beginner/intermediate) that results in baseline AI literacy, at least MVP capstone          │ │
+│ │    projects, and a public community presence.                                                                                                                                              │ │
+│ │  • Program-level measurable success metrics (all measurable; each marked ASSUMPTION where not yet verified):                                                                               │ │
+│ │     1 Enrollment: Target = 30 registered; Minimum acceptable = 24 registered by Day -14. (ASSUMPTION; confidence 0.6). Measurement: registration form (Owner: Program Admin; cadence:      │ │
+│ │       daily).                                                                                                                                                                              │ │
+│ │     2 Average weekly attendance: Target = ≥70% (≥21 participants) across sessions. (ASSUMPTION; confidence 0.6). Measurement: Zoom attendance report / in-person sign-in (Owner: Session   │ │
+│ │       Facilitator; update dashboard within 24h).                                                                                                                                           │ │
+│ │     3 Program completion (capstone submitted): Target = ≥70% of participants submit capstone deliverable by program end (≥21). (ASSUMPTION; confidence 0.5). Measurement: GitHub PRs /     │ │
+│ │       repo submissions (Owner: Mentors & Program Admin).                                                                                                                                   │ │
+│ │     4 Satisfaction: Average final-survey satisfaction ≥7/10. (ASSUMPTION; confidence 0.6). Measurement: Google Form at program end (Owner: Program Admin).                                 │ │
+│ │     5 Learning gain: ≥80% of respondents report improved confidence in at least one AI skill. Measurement: pre/post confidence survey (Owner: Program Admin).                              │ │
+│ │     6 Public artifacts: ≥5 public artifacts (repos/notebooks/demos) posted. (ASSUMPTION; confidence 0.6). Measurement: Program repo / website (Owner: Program Lead).                       │ │
+│ │     7 Capstone quality: ≥60% of submitted capstones meet rubric pass threshold (see rubric). (ASSUMPTION; confidence 0.6). Measurement: mentor scoring (Owner: Lead Instructor).           │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Pre-launch (Day -21 to Day 0) — owners, deadlines, and deliverables                                                                                                                        │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Day -21 to Day -14 (Outreach & staffing)                                                                                                                                                │ │
+│ │     • Create & publish registration form with skill-level, timezone, device/browser test link, accommodation request, and emergency contact. Owner: Outreach Lead / Program Admin.         │ │
+│ │       Deadline: Day -21.                                                                                                                                                                   │ │
+│ │     • Recruitment: secure signed role agreements from Program Lead, 2 Lead Instructors, Tech Lead, 4 TAs, and backup pool of 2–3 volunteers (overhire +25%). Owner: Outreach Lead.         │ │
+│ │       Deadline: Day -14. (ASSUMPTION: volunteers commit; confidence 0.6)                                                                                                                   │ │
+│ │     • Budget confirmation: Program Lead secures actual funding and authorizes cloud contingency. Publish final budget (see scenarios). Deadline: Day -14. (ASSUMPTION: budget approval;    │ │
+│ │       confidence varies)                                                                                                                                                                   │ │
+│ │  • Day -14 to Day -7 (Content & logistics)                                                                                                                                                 │ │
+│ │     • Prepare onboarding pack: syllabus, schedule, Code of Conduct, Slack workspace, GitHub org template, starter Colab notebooks (CPU-only or small-dataset versions), ethics & data      │ │
+│ │       checklist, pre-work primer for beginners. Owner: Content Lead. Deadline: Day -7.                                                                                                     │ │
+│ │     • Send onboarding email with device/browser test (one-click test notebook), baseline skills quiz, and accommodation form. Owner: Program Admin. Send Day -7.                           │ │
+│ │     • Loaner logistics: if needed, Outreach Lead secures loaner devices / partner pickup options (trigger described below). Deadline: Day -5 if required.                                  │ │
+│ │  • Day -7 to Day -2 (Tech & communications)                                                                                                                                                │ │
+│ │     • Tech dry-run (Zoom + breakout plan + Colab notebooks + backup Jitsi/Google Meet + unlisted walkthrough video uploaded). Owner: Tech Lead. Deadline: Day -2.                          │ │
+│ │     • Publish minute-level session agendas and lab notebooks for Week 1 and Week 2. Owner: Lead Instructors & Content Lead. Deadline: Day -2.                                              │ │
+│ │     • Final confirmation email / reminder sent Day -2 and Day -0 (morning of first session). Owner: Program Admin.                                                                         │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Week-by-week program schedule (live sessions assumed weekly; session length & cadence adjustable)                                                                                          │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Format assumptions: weekly live session (2.5 hours), 2 office-hours slots per week (1 hour each), Slack workspace for async, GitHub for repos. (ASSUMPTION; confidence 0.7)             │ │
+│ │  • Week 0 / Orientation & baseline (Session 1 — 2.5 hours)                                                                                                                                 │ │
+│ │     • Agenda (example minute-level): 0–10m welcome & rules; 10–30m baseline quiz + expectations; 30–80m lecture: AI fundamentals (ML vs. LLMs); 80–140m environment setup (Colab, GitHub,  │ │
+│ │       Slack) — guided walk-through; 140–150m team formation & project idea lightning round.                                                                                                │ │
+│ │     • Deliverables by Friday: confirm accounts (GitHub & Slack), submit one-line capstone idea and pre-work completion check. Owner: Lead Instructor / Program Admin.                      │ │
+│ │     • Office hours: two 1-hr slots for setup troubleshooting during the week. Owners: TAs.                                                                                                 │ │
+│ │  • Week 2 / Tools & guided mini-projects (Session 2 — 2.5 hours)                                                                                                                           │ │
+│ │     • Agenda: 0–10m recap; 10–50m prompt engineering & LLM basics demo; 50–140m guided lab in Colab (text generation or small data modeling with step-by-step notebook); 140–150m share    │ │
+│ │       mini-project plans.                                                                                                                                                                  │ │
+│ │     • Deliverable: mini-project (solo or pairs) due Friday — notebook PR and 1-paragraph description posted to Slack. Mentors review within 48h.                                           │ │
+│ │     • Office hours: TA drop-in times for debugging and incremental mentor check-ins.                                                                                                       │ │
+│ │  • Week 3 / Capstone scoping & development (Session 3 — 2 hours workshop)                                                                                                                  │ │
+│ │     • Agenda: 0–20m capstone scoping & success criteria; 20–60m ethics & data provenance checklist walkthrough; 60–120m breakout mentor planning with mandatory project plan submission.   │ │
+│ │     • Deliverables by Friday: working prototype + README + Data & Ethics form submitted to capstone tracker. Mentor checkpoint: mark on-track vs at-risk using rubric. If >30% at-risk →   │ │
+│ │       enact mitigation (see risks).                                                                                                                                                        │ │
+│ │     • Increased mentor hours this week (allocate additional time based on at-risk count).                                                                                                  │ │
+│ │  • Week 4 / Finalization & Demo Week (Session 4 rehearsal + Demo day)                                                                                                                      │ │
+│ │     • Rehearsal session (2 hours): pitch coaching, slide deck templates, timing practice.                                                                                                  │ │
+│ │     • Demo day(s): 3–4 minute demo + 5 minutes Q&A per team; rubric scoring by 2 independent reviewers (mentors & external judges if available).                                           │ │
+│ │     • Final deliverables: public GitHub repo with reproducible notebook, README, demo video (3 min), slides, and 1-paragraph reflection + post-program survey completed within 48 hours.   │ │
+│ │     • Post-program: publish artifacts to community page and send final report + next-step opportunities.                                                                                   │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Roles, time commitments & owners (explicit)                                                                                                                                                │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Program Lead (owner): 8–12 hrs/week pre-launch; 10–15 hrs/week during program. Responsibilities: overall coordination, budget, partner outreach, final decisions.                       │ │
+│ │  • Lead Instructor(s) (2): prepare content 20–30 hrs pre-launch; lead sessions; mentor capstones. Commitment: 6–10 hrs/week during program.                                                │ │
+│ │  • Tech Lead: 6–8 hrs pre-launch; on-call during sessions. Responsibilities: dry-runs, backups, API key management.                                                                        │ │
+│ │  • TAs / Volunteers (4–6): 3–5 hrs/week each for office hours, Slack moderation, grading.                                                                                                  │ │
+│ │  • Program Admin: 6–10 hrs/week pre-launch & during for communications, dashboard updates, survey administration.                                                                          │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Budgets (ASSUMPTIONS — Program Lead must confirm by Day -14)                                                                                                                               │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Bare-minimum scenario (~$600) — essential items only:                                                                                                                                   │ │
+│ │     • Refreshments (optional): $100                                                                                                                                                        │ │
+│ │     • Cloud/API contingency: $150                                                                                                                                                          │ │
+│ │     • Volunteer token / gift cards (minimal): $150 (e.g., $10 × 15)                                                                                                                        │ │
+│ │     • Printed materials/incidentals: $50                                                                                                                                                   │ │
+│ │     • Contingency (small): $150                                                                                                                                                            │ │
+│ │     • Owner: Program Lead to confirm and reallocate.                                                                                                                                       │ │
+│ │  • Recommended scenario (~$1,800) — higher quality and buffer:                                                                                                                             │ │
+│ │     • Venue (if paid): $0–300                                                                                                                                                              │ │
+│ │     • Refreshments: $150                                                                                                                                                                   │ │
+│ │     • Cloud/API credits & paid APIs: $200                                                                                                                                                  │ │
+│ │     • Volunteer stipends/gift cards (e.g., $30 × 10): $300                                                                                                                                 │ │
+│ │     • Printed materials / swag: $100                                                                                                                                                       │ │
+│ │     • Marketing: $100                                                                                                                                                                      │ │
+│ │     • Loaner device logistics / small reimbursements: $200                                                                                                                                 │ │
+│ │     • Contingency: $350                                                                                                                                                                    │ │
+│ │  • Measurement & owner: Program Lead maintains budget sheet in dashboard; any extra spend >$100 requires approval.                                                                         │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Capstone acceptance rubric (team-level; reproducible scoring)                                                                                                                              │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Items (0–4 each; total 20):                                                                                                                                                             │ │
+│ │     1 Functionality & Demo (0–4) — does the demo show working outputs?                                                                                                                     │ │
+│ │     2 Technical Skill & Repro (0–4) — clear, reproducible steps in a notebook.                                                                                                             │ │
+│ │     3 Documentation & Data Provenance (0–4) — README, dataset licensing, ethics checklist.                                                                                                 │ │
+│ │     4 Clarity & Impact (0–4) — problem statement and user value.                                                                                                                           │ │
+│ │     5 Reflection & Learning (0–4) — concise reflection showing learning gains.                                                                                                             │ │
+│ │  • Passing threshold: ≥60% (≥12/20). Each submission reviewed by 2 reviewers; if disagreement >2 points, third reviewer breaks tie. Owner: Lead Instructor / Mentors.                      │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Key assumptions (each with confidence and verification trigger)                                                                                                                            │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • ASSUMPTION 1 — Cohort target & minimum enrollment: Target 30, minimum acceptable 24 by Day -14. Confidence 0.6.                                                                         │ │
+│ │     • Verification: registration form counts. Trigger: if <24 at Day -14 → escalate outreach plan and consider extending registration window or reducing cohort.                           │ │
+│ │  • ASSUMPTION 2 — Device & Colab capability: ≥80% of registrants have Colab-capable device by Day -7. Confidence 0.6.                                                                      │ │
+│ │     • Verification: Day -7 device/browser one-click notebook test (Owner: Program Admin). Trigger: if <80% pass → implement loaner/pairing/low-tech fallbacks.                             │ │
+│ │  • ASSUMPTION 3 — Volunteer commitments: 2 Lead Instructors + 4 TAs + Tech Lead confirmed by Day -14. Confidence 0.6.                                                                      │ │
+│ │     • Verification: signed role agreements. Trigger: if not secured → reduce cohort or compress scope.                                                                                     │ │
+│ │  • ASSUMPTION 4 — Budget available: recommended or minimal funds confirmed by Day -14. Confidence 0.5.                                                                                     │ │
+│ │     • Verification: Program Lead obtains written confirmation. Trigger: if not available → prioritize essential items (cloud contingency, stipends) and cut discretionary items.           │ │
+│ │  • ASSUMPTION 5 — Participant baseline skill mix: mixed beginner/intermediate (not extremely skewed). Confidence 0.6.                                                                      │ │
+│ │     • Verification: baseline skill quiz results by Day -7. Trigger: if >60% beginners → open dedicated beginner track or provide additional pre-work; if >40% advanced → add optional      │ │
+│ │       advanced exercises.                                                                                                                                                                  │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Major risks, concrete failure scenarios, triggers, and mitigations (owners & actions)                                                                                                      │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Risk A — Insufficient device/Colab access (concrete scenario)                                                                                                                           │ │
+│ │     • Failure: ≥20% participants cannot run notebooks during labs leading to dropout.                                                                                                      │ │
+│ │     • Trigger: <80% pass Day -7 device test OR >6 participants report “cannot run” within first 20 minutes of a session.                                                                   │ │
+│ │     • Mitigations (stepwise):                                                                                                                                                              │ │
+│ │        1 Day -7: Program Admin runs device test; if <80% pass → Outreach Lead arranges 2–6 loaner devices or partner lab pick-up within 5 days.                                            │ │
+│ │        2 Pairing fallback: Lead Instructor pairs participants without devices with volunteers/peers (establish pairing during Session 1).                                                  │ │
+│ │        3 Low-tech fallbacks: Tech Lead provides CPU-only notebooks, pre-run outputs, and step-by-step screenshots + unlisted walkthrough videos by Day -2.                                 │ │
+│ │        4 During session: TAs triage participants in Slack; Tech Lead posts alternative link within first 10 minutes.                                                                       │ │
+│ │        • Owners: Program Admin (test), Outreach Lead (loaners), Tech Lead & Content Lead (fallbacks).                                                                                      │ │
+│ │  • Risk B — API/cloud quota exhaustion or unexpected costs                                                                                                                                 │ │
+│ │     • Failure: shared API key quota exhausted or charges incurred halting labs.                                                                                                            │ │
+│ │     • Trigger: any quota error or billing alert.                                                                                                                                           │ │
+│ │     • Mitigations:                                                                                                                                                                         │ │
+│ │        1 Enforce “no personal paid keys” policy in onboarding; require acknowledgement. Owner: Program Admin.                                                                              │ │
+│ │        2 Tech Lead provisions centrally-managed API keys with per-user throttles and monitors quota usage; set alerts. Deadline: Day -3.                                                   │ │
+│ │        3 Cloud contingency budget reserved; Program Lead authorizes limited top-ups only. Owner: Program Lead.                                                                             │ │
+│ │        4 Provide alternative offline exercises (small local models or pre-generated outputs). Owner: Content Lead.                                                                         │ │
+│ │  • Risk C — Volunteer or instructor dropout                                                                                                                                                │ │
+│ │     • Failure: lead instructor or ≥2 TAs withdraw <72 hours before session.                                                                                                                │ │
+│ │     • Trigger: missing commitments or missed shifts twice in a week.                                                                                                                       │ │
+│ │     • Mitigations:                                                                                                                                                                         │ │
+│ │        1 Overhire volunteers (+25–50%); secure signed role agreements with notice requirements. Owner: Outreach Lead (Day -14).                                                            │ │
+│ │        2 Maintain volunteer handbook & modular task docs so backups can step in quickly. Owner: Tech Lead & Content Lead (Day -7).                                                         │ │
+│ │        3 Emergency pool of 2–3 backup volunteers committed to 24–48h on-call. Owner: Program Lead.                                                                                         │ │
+│ │  • Risk D — High attrition / engagement drop                                                                                                                                               │ │
+│ │     • Failure: attendance down >20% between sessions or completion <60% mid-program.                                                                                                       │ │
+│ │     • Trigger: attendance drop >20% or >25% participants flagged at-risk at Week 3.                                                                                                        │ │
+│ │     • Mitigations:                                                                                                                                                                         │ │
+│ │        1 Immediate outreach to absent participants within 48h offering help or pairing. Owner: Mentors.                                                                                    │ │
+│ │        2 Re-scope at-risk projects to MVP in 48h workshop; add mentor hours. Owner: Lead Instructor.                                                                                       │ │
+│ │        3 Offer micro-incentives (badges, demo eligibility). Owner: Program Lead.                                                                                                           │ │
+│ │  • Risk E — Data privacy / legal breach from capstone data                                                                                                                                 │ │
+│ │     • Failure: capstone repo contains PII or copyrighted content exposed in public demo.                                                                                                   │ │
+│ │     • Trigger: any submission flagged for PII / copyright during Week 3 review or before demo.                                                                                             │ │
+│ │     • Mitigations:                                                                                                                                                                         │ │
+│ │        1 Require Data & Ethics form Day 1 of Week 3: dataset source, license, PII check. Owner: Lead Instructor.                                                                           │ │
+│ │        2 Provide curated pre-approved datasets. Owner: Content Lead.                                                                                                                       │ │
+│ │        3 If issue found, remove content, assist anonymization, and postpone demo if necessary. Owner: Program Lead.                                                                        │ │
+│ │  • Risk F — Accessibility & timezone exclusion                                                                                                                                             │ │
+│ │     • Failure: participants with accessibility needs or remote across many timezones cannot participate.                                                                                   │ │
+│ │     • Trigger: >5 accommodation requests not addressed OR >15% participants in widely disparate timezones.                                                                                 │ │
+│ │     • Mitigations:                                                                                                                                                                         │ │
+│ │        1 Accommodation request form in registration and arrange captions/transcripts for recordings. Owner: Program Admin.                                                                 │ │
+│ │        2 Offer asynchronous alternative with weekly office hours scheduled in multiple time windows. Owner: Program Lead.                                                                  │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Monitoring, reporting & operational checklist (minimum)                                                                                                                                    │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Google Sheet dashboard tabs: Registrations; Attendance per session; Capstone status (on-track/at-risk/done); Volunteer roster & hours; Budget spend; Survey results. Owner: Program     │ │
+│ │    Admin — update within 24h after sessions.                                                                                                                                               │ │
+│ │  • Weekly status meeting (30–45 min) with Program Lead, Instructors, Tech Lead, Outreach Lead on Mon/Tue after session: review attendance, at-risk list, budget, and upcoming actions.     │ │
+│ │  • Automated reminders: registration confirmation, Day -7 device test, Day -2 reminder, Day 0 morning. Owner: Program Admin (use Mailchimp/Gmail templates).                               │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Communications templates & cadence (owners)                                                                                                                                                │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Registration confirmation (immediate), Onboarding pack (Day -7), Device/browser test (Day -7), Reminder (Day -2), Day-of morning reminder (Day 0), Post-session summary + “to do this   │ │
+│ │    week” within 24h, Mid-program check-in Week 2, Final survey & next steps within 48h of demo day. Owner: Program Admin.                                                                  │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Acceptance criteria — program-level (final)                                                                                                                                                │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Declare the launch “successful” if ALL of the following are met:                                                                                                                        │ │
+│ │     1 Enrollment: ≥24 registered by Day -14 (Owner: Program Admin).                                                                                                                        │ │
+│ │     2 Attendance: average weekly attendance across the program ≥70% (≥21 participants) (Owner: Session Facilitator).                                                                       │ │
+│ │     3 Completion: ≥70% of participants submit capstone deliverable by program end (≥21) (Owner: Mentors).                                                                                  │ │
+│ │     4 Capstone quality: ≥60% of submitted capstones meet rubric pass threshold (Owner: Lead Instructor).                                                                                   │ │
+│ │     5 Satisfaction: final survey average ≥7/10 among respondents (Owner: Program Admin).                                                                                                   │ │
+│ │     6 Public artifacts: ≥5 public artifacts posted to the program repo/community page (Owner: Program Lead).                                                                               │ │
+│ │  • If any of enrollment or completion fall below thresholds, classify launch as “needs remediation” and run a 6–8 week remediation batch; document causes and corrective actions.          │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Actionable verification & next immediate actions (owners & deadlines — must be completed before Day 0)                                                                                     │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • Program Admin: run Day -7 device/browser test and baseline quiz; report results to dashboard within 48h. Trigger loaner/pairs if <80% pass.                                             │ │
+│ │  • Outreach Lead: obtain signed role agreements for instructors/volunteers and an emergency backup pool by Day -14.                                                                        │ │
+│ │  • Program Lead: confirm budget (bare-min or recommended) and cloud contingency by Day -14.                                                                                                │ │
+│ │  • Tech Lead: complete dry-run (Zoom + Colab + backup link + unlisted walkthroughs) by Day -2 and publish tech readiness status.                                                           │ │
+│ │  • Content Lead & Lead Instructors: publish minute-level session agendas, lab notebooks, and provide pre-work by Day -7.                                                                   │ │
+│ │                                                                                                                                                                                            │ │
+│ │ Notes on verifiability and assumptions                                                                                                                                                     │ │
+│ │                                                                                                                                                                                            │ │
+│ │  • All numeric targets and resource numbers that are not externally confirmed are labelled ASSUMPTION above with a confidence score. Measurement methods and owners are provided so each   │ │
+│ │    can be verified ahead of launch.                                                                                                                                                        │ │
+│ │  • If organizers want, I can produce filled templates: registration form, device test notebook link, role agreement template, budget spreadsheet, session minute-level agendas, capstone   │ │
+│ │    Data & Ethics form, and Slack/Trello templates.                                                                                                                                         │ │
+│ │                                                                                                                                                                                            │ │
+│ │ This plan is complete and actionable: it provides objectives, metrics, week-by-week actions with owners and deadlines, explicit assumptions with confidence, concrete risks with triggers  │ │
+│ │ & mitigations, and final acceptance criteria.                                                                                                                                              │ │
+│ │                                                                                                                                                                                            │ │
+│ │ TERMINATE                                                                                                                                                                                  │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│ ╭─ USAGE ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ {                                                                                                                                                                                          │ │
+│ │   "input_tokens": 7744,                                                                                                                                                                    │ │
+│ │   "output_tokens": 4916                                                                                                                                                                    │ │
+│ │ }                                                                                                                                                                                          │ │
+│ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+         Output: - Incremental contribution (final consolidated, actionable 4-week launch plan)   - I converted prior drafts, verificatio…
+[Turn 5] Termination keyword detected. Stopping.
+
+============================================================
+Final output:
+- Incremental contribution (final consolidated, actionable 4-week launch plan)
+  - I converted prior drafts, verifications, and challenges into a single, internally consistent launch plan that an organizer can execute. It includes: clear objectives & measurable metrics, day-by-day pre-launch and week-by-week actions with owners and deadlines, explicit assumptions with confidence scores and monitoring triggers, concrete risks with numeric triggers and stepwise mitigations (owners & timelines), two budget scenarios (bare-minimum and recommended) marked as assumptions, capstone rubric, communications cadence, and final acceptance criteria.
+  - Every target or resource that is not externally confirmed is labelled ASSUMPTION with a confidence score and a specific verification action and deadline. Measurement methods and owners are assigned for all metrics.
+  - The plan is designed for a 30-person mixed beginner/intermediate cohort but includes minimum-acceptable thresholds (e.g., minimum enrollment = 24) and scaling guidance if verifications fail.
+
+Executive summary — objectives & measurable success metrics
+- Objective: Run a practical 4-week community AI learning program for ~30 participants (mixed beginner/intermediate) that results in baseline AI literacy, at least MVP capstone projects, and a public community presence.
+- Program-level measurable success metrics (all measurable; each marked ASSUMPTION where not yet verified):
+  1. Enrollment: Target = 30 registered; Minimum acceptable = 24 registered by Day -14. (ASSUMPTION; confidence 0.6). Measurement: registration form (Owner: Program Admin; cadence: daily).
+  2. Average weekly attendance: Target = ≥70% (≥21 participants) across sessions. (ASSUMPTION; confidence 0.6). Measurement: Zoom attendance report / in-person sign-in (Owner: Session Facilitator; update dashboard within 24h).
+  3. Program completion (capstone submitted): Target = ≥70% of participants submit capstone deliverable by program end (≥21). (ASSUMPTION; confidence 0.5). Measurement: GitHub PRs / repo submissions (Owner: Mentors & Program Admin).
+  4. Satisfaction: Average final-survey satisfaction ≥7/10. (ASSUMPTION; confidence 0.6). Measurement: Google Form at program end (Owner: Program Admin).
+  5. Learning gain: ≥80% of respondents report improved confidence in at least one AI skill. Measurement: pre/post confidence survey (Owner: Program Admin).
+  6. Public artifacts: ≥5 public artifacts (repos/notebooks/demos) posted. (ASSUMPTION; confidence 0.6). Measurement: Program repo / website (Owner: Program Lead).
+  7. Capstone quality: ≥60% of submitted capstones meet rubric pass threshold (see rubric). (ASSUMPTION; confidence 0.6). Measurement: mentor scoring (Owner: Lead Instructor).
+
+Pre-launch (Day -21 to Day 0) — owners, deadlines, and deliverables
+- Day -21 to Day -14 (Outreach & staffing)
+  - Create & publish registration form with skill-level, timezone, device/browser test link, accommodation request, and emergency contact. Owner: Outreach Lead / Program Admin. Deadline: Day -21.
+  - Recruitment: secure signed role agreements from Program Lead, 2 Lead Instructors, Tech Lead, 4 TAs, and backup pool of 2–3 volunteers (overhire +25%). Owner: Outreach Lead. Deadline: Day -14. (ASSUMPTION: volunteers commit; confidence 0.6)
+  - Budget confirmation: Program Lead secures actual funding and authorizes cloud contingency. Publish final budget (see scenarios). Deadline: Day -14. (ASSUMPTION: budget approval; confidence varies)
+- Day -14 to Day -7 (Content & logistics)
+  - Prepare onboarding pack: syllabus, schedule, Code of Conduct, Slack workspace, GitHub org template, starter Colab notebooks (CPU-only or small-dataset versions), ethics & data checklist, pre-work primer for beginners. Owner: Content Lead. Deadline: Day -7.
+  - Send onboarding email with device/browser test (one-click test notebook), baseline skills quiz, and accommodation form. Owner: Program Admin. Send Day -7.
+  - Loaner logistics: if needed, Outreach Lead secures loaner devices / partner pickup options (trigger described below). Deadline: Day -5 if required.
+- Day -7 to Day -2 (Tech & communications)
+  - Tech dry-run (Zoom + breakout plan + Colab notebooks + backup Jitsi/Google Meet + unlisted walkthrough video uploaded). Owner: Tech Lead. Deadline: Day -2.
+  - Publish minute-level session agendas and lab notebooks for Week 1 and Week 2. Owner: Lead Instructors & Content Lead. Deadline: Day -2.
+  - Final confirmation email / reminder sent Day -2 and Day -0 (morning of first session). Owner: Program Admin.
+
+Week-by-week program schedule (live sessions assumed weekly; session length & cadence adjustable)
+- Format assumptions: weekly live session (2.5 hours), 2 office-hours slots per week (1 hour each), Slack workspace for async, GitHub for repos. (ASSUMPTION; confidence 0.7)
+- Week 0 / Orientation & baseline (Session 1 — 2.5 hours)
+  - Agenda (example minute-level): 0–10m welcome & rules; 10–30m baseline quiz + expectations; 30–80m lecture: AI fundamentals (ML vs. LLMs); 80–140m environment setup (Colab, GitHub, Slack) — guided walk-through; 140–150m team formation & project idea lightning round.
+  - Deliverables by Friday: confirm accounts (GitHub & Slack), submit one-line capstone idea and pre-work completion check. Owner: Lead Instructor / Program Admin.
+  - Office hours: two 1-hr slots for setup troubleshooting during the week. Owners: TAs.
+- Week 2 / Tools & guided mini-projects (Session 2 — 2.5 hours)
+  - Agenda: 0–10m recap; 10–50m prompt engineering & LLM basics demo; 50–140m guided lab in Colab (text generation or small data modeling with step-by-step notebook); 140–150m share mini-project plans.
+  - Deliverable: mini-project (solo or pairs) due Friday — notebook PR and 1-paragraph description posted to Slack. Mentors review within 48h.
+  - Office hours: TA drop-in times for debugging and incremental mentor check-ins.
+- Week 3 / Capstone scoping & development (Session 3 — 2 hours workshop)
+  - Agenda: 0–20m capstone scoping & success criteria; 20–60m ethics & data provenance checklist walkthrough; 60–120m breakout mentor planning with mandatory project plan submission.
+  - Deliverables by Friday: working prototype + README + Data & Ethics form submitted to capstone tracker. Mentor checkpoint: mark on-track vs at-risk using rubric. If >30% at-risk → enact mitigation (see risks).
+  - Increased mentor hours this week (allocate additional time based on at-risk count).
+- Week 4 / Finalization & Demo Week (Session 4 rehearsal + Demo day)
+  - Rehearsal session (2 hours): pitch coaching, slide deck templates, timing practice.
+  - Demo day(s): 3–4 minute demo + 5 minutes Q&A per team; rubric scoring by 2 independent reviewers (mentors & external judges if available).
+  - Final deliverables: public GitHub repo with reproducible notebook, README, demo video (3 min), slides, and 1-paragraph reflection + post-program survey completed within 48 hours.
+  - Post-program: publish artifacts to community page and send final report + next-step opportunities.
+
+Roles, time commitments & owners (explicit)
+- Program Lead (owner): 8–12 hrs/week pre-launch; 10–15 hrs/week during program. Responsibilities: overall coordination, budget, partner outreach, final decisions.
+- Lead Instructor(s) (2): prepare content 20–30 hrs pre-launch; lead sessions; mentor capstones. Commitment: 6–10 hrs/week during program.
+- Tech Lead: 6–8 hrs pre-launch; on-call during sessions. Responsibilities: dry-runs, backups, API key management.
+- TAs / Volunteers (4–6): 3–5 hrs/week each for office hours, Slack moderation, grading.
+- Program Admin: 6–10 hrs/week pre-launch & during for communications, dashboard updates, survey administration.
+
+Budgets (ASSUMPTIONS — Program Lead must confirm by Day -14)
+- Bare-minimum scenario (~$600) — essential items only:
+  - Refreshments (optional): $100
+  - Cloud/API contingency: $150
+  - Volunteer token / gift cards (minimal): $150 (e.g., $10 × 15)
+  - Printed materials/incidentals: $50
+  - Contingency (small): $150
+  - Owner: Program Lead to confirm and reallocate.
+- Recommended scenario (~$1,800) — higher quality and buffer:
+  - Venue (if paid): $0–300
+  - Refreshments: $150
+  - Cloud/API credits & paid APIs: $200
+  - Volunteer stipends/gift cards (e.g., $30 × 10): $300
+  - Printed materials / swag: $100
+  - Marketing: $100
+  - Loaner device logistics / small reimbursements: $200
+  - Contingency: $350
+- Measurement & owner: Program Lead maintains budget sheet in dashboard; any extra spend >$100 requires approval.
+
+Capstone acceptance rubric (team-level; reproducible scoring)
+- Items (0–4 each; total 20):
+  1. Functionality & Demo (0–4) — does the demo show working outputs?
+  2. Technical Skill & Repro (0–4) — clear, reproducible steps in a notebook.
+  3. Documentation & Data Provenance (0–4) — README, dataset licensing, ethics checklist.
+  4. Clarity & Impact (0–4) — problem statement and user value.
+  5. Reflection & Learning (0–4) — concise reflection showing learning gains.
+- Passing threshold: ≥60% (≥12/20). Each submission reviewed by 2 reviewers; if disagreement >2 points, third reviewer breaks tie. Owner: Lead Instructor / Mentors.
+
+Key assumptions (each with confidence and verification trigger)
+- ASSUMPTION 1 — Cohort target & minimum enrollment: Target 30, minimum acceptable 24 by Day -14. Confidence 0.6.
+  - Verification: registration form counts. Trigger: if <24 at Day -14 → escalate outreach plan and consider extending registration window or reducing cohort.
+- ASSUMPTION 2 — Device & Colab capability: ≥80% of registrants have Colab-capable device by Day -7. Confidence 0.6.
+  - Verification: Day -7 device/browser one-click notebook test (Owner: Program Admin). Trigger: if <80% pass → implement loaner/pairing/low-tech fallbacks.
+- ASSUMPTION 3 — Volunteer commitments: 2 Lead Instructors + 4 TAs + Tech Lead confirmed by Day -14. Confidence 0.6.
+  - Verification: signed role agreements. Trigger: if not secured → reduce cohort or compress scope.
+- ASSUMPTION 4 — Budget available: recommended or minimal funds confirmed by Day -14. Confidence 0.5.
+  - Verification: Program Lead obtains written confirmation. Trigger: if not available → prioritize essential items (cloud contingency, stipends) and cut discretionary items.
+- ASSUMPTION 5 — Participant baseline skill mix: mixed beginner/intermediate (not extremely skewed). Confidence 0.6.
+  - Verification: baseline skill quiz results by Day -7. Trigger: if >60% beginners → open dedicated beginner track or provide additional pre-work; if >40% advanced → add optional advanced exercises.
+
+Major risks, concrete failure scenarios, triggers, and mitigations (owners & actions)
+- Risk A — Insufficient device/Colab access (concrete scenario)
+  - Failure: ≥20% participants cannot run notebooks during labs leading to dropout.
+  - Trigger: <80% pass Day -7 device test OR >6 participants report “cannot run” within first 20 minutes of a session.
+  - Mitigations (stepwise):
+    1. Day -7: Program Admin runs device test; if <80% pass → Outreach Lead arranges 2–6 loaner devices or partner lab pick-up within 5 days.
+    2. Pairing fallback: Lead Instructor pairs participants without devices with volunteers/peers (establish pairing during Session 1).
+    3. Low-tech fallbacks: Tech Lead provides CPU-only notebooks, pre-run outputs, and step-by-step screenshots + unlisted walkthrough videos by Day -2.
+    4. During session: TAs triage participants in Slack; Tech Lead posts alternative link within first 10 minutes.
+    - Owners: Program Admin (test), Outreach Lead (loaners), Tech Lead & Content Lead (fallbacks).
+- Risk B — API/cloud quota exhaustion or unexpected costs
+  - Failure: shared API key quota exhausted or charges incurred halting labs.
+  - Trigger: any quota error or billing alert.
+  - Mitigations:
+    1. Enforce “no personal paid keys” policy in onboarding; require acknowledgement. Owner: Program Admin.
+    2. Tech Lead provisions centrally-managed API keys with per-user throttles and monitors quota usage; set alerts. Deadline: Day -3.
+    3. Cloud contingency budget reserved; Program Lead authorizes limited top-ups only. Owner: Program Lead.
+    4. Provide alternative offline exercises (small local models or pre-generated outputs). Owner: Content Lead.
+- Risk C — Volunteer or instructor dropout
+  - Failure: lead instructor or ≥2 TAs withdraw <72 hours before session.
+  - Trigger: missing commitments or missed shifts twice in a week.
+  - Mitigations:
+    1. Overhire volunteers (+25–50%); secure signed role agreements with notice requirements. Owner: Outreach Lead (Day -14).
+    2. Maintain volunteer handbook & modular task docs so backups can step in quickly. Owner: Tech Lead & Content Lead (Day -7).
+    3. Emergency pool of 2–3 backup volunteers committed to 24–48h on-call. Owner: Program Lead.
+- Risk D — High attrition / engagement drop
+  - Failure: attendance down >20% between sessions or completion <60% mid-program.
+  - Trigger: attendance drop >20% or >25% participants flagged at-risk at Week 3.
+  - Mitigations:
+    1. Immediate outreach to absent participants within 48h offering help or pairing. Owner: Mentors.
+    2. Re-scope at-risk projects to MVP in 48h workshop; add mentor hours. Owner: Lead Instructor.
+    3. Offer micro-incentives (badges, demo eligibility). Owner: Program Lead.
+- Risk E — Data privacy / legal breach from capstone data
+  - Failure: capstone repo contains PII or copyrighted content exposed in public demo.
+  - Trigger: any submission flagged for PII / copyright during Week 3 review or before demo.
+  - Mitigations:
+    1. Require Data & Ethics form Day 1 of Week 3: dataset source, license, PII check. Owner: Lead Instructor.
+    2. Provide curated pre-approved datasets. Owner: Content Lead.
+    3. If issue found, remove content, assist anonymization, and postpone demo if necessary. Owner: Program Lead.
+- Risk F — Accessibility & timezone exclusion
+  - Failure: participants with accessibility needs or remote across many timezones cannot participate.
+  - Trigger: >5 accommodation requests not addressed OR >15% participants in widely disparate timezones.
+  - Mitigations:
+    1. Accommodation request form in registration and arrange captions/transcripts for recordings. Owner: Program Admin.
+    2. Offer asynchronous alternative with weekly office hours scheduled in multiple time windows. Owner: Program Lead.
+
+Monitoring, reporting & operational checklist (minimum)
+- Google Sheet dashboard tabs: Registrations; Attendance per session; Capstone status (on-track/at-risk/done); Volunteer roster & hours; Budget spend; Survey results. Owner: Program Admin — update within 24h after sessions.
+- Weekly status meeting (30–45 min) with Program Lead, Instructors, Tech Lead, Outreach Lead on Mon/Tue after session: review attendance, at-risk list, budget, and upcoming actions.
+- Automated reminders: registration confirmation, Day -7 device test, Day -2 reminder, Day 0 morning. Owner: Program Admin (use Mailchimp/Gmail templates).
+
+Communications templates & cadence (owners)
+- Registration confirmation (immediate), Onboarding pack (Day -7), Device/browser test (Day -7), Reminder (Day -2), Day-of morning reminder (Day 0), Post-session summary + “to do this week” within 24h, Mid-program check-in Week 2, Final survey & next steps within 48h of demo day. Owner: Program Admin.
+
+Acceptance criteria — program-level (final)
+- Declare the launch “successful” if ALL of the following are met:
+  1. Enrollment: ≥24 registered by Day -14 (Owner: Program Admin).
+  2. Attendance: average weekly attendance across the program ≥70% (≥21 participants) (Owner: Session Facilitator).
+  3. Completion: ≥70% of participants submit capstone deliverable by program end (≥21) (Owner: Mentors).
+  4. Capstone quality: ≥60% of submitted capstones meet rubric pass threshold (Owner: Lead Instructor).
+  5. Satisfaction: final survey average ≥7/10 among respondents (Owner: Program Admin).
+  6. Public artifacts: ≥5 public artifacts posted to the program repo/community page (Owner: Program Lead).
+- If any of enrollment or completion fall below thresholds, classify launch as “needs remediation” and run a 6–8 week remediation batch; document causes and corrective actions.
+
+Actionable verification & next immediate actions (owners & deadlines — must be completed before Day 0)
+- Program Admin: run Day -7 device/browser test and baseline quiz; report results to dashboard within 48h. Trigger loaner/pairs if <80% pass.
+- Outreach Lead: obtain signed role agreements for instructors/volunteers and an emergency backup pool by Day -14.
+- Program Lead: confirm budget (bare-min or recommended) and cloud contingency by Day -14.
+- Tech Lead: complete dry-run (Zoom + Colab + backup link + unlisted walkthroughs) by Day -2 and publish tech readiness status.
+- Content Lead & Lead Instructors: publish minute-level session agendas, lab notebooks, and provide pre-work by Day -7.
+
+Notes on verifiability and assumptions
+- All numeric targets and resource numbers that are not externally confirmed are labelled ASSUMPTION above with a confidence score. Measurement methods and owners are provided so each can be verified ahead of launch.
+- If organizers want, I can produce filled templates: registration form, device test notebook link, role agreement template, budget spreadsheet, session minute-level agendas, capstone Data & Ethics form, and Slack/Trello templates.
+
+This plan is complete and actionable: it provides objectives, metrics, week-by-week actions with owners and deadlines, explicit assumptions with confidence, concrete risks with triggers & mitigations, and final acceptance criteria.
+
+TERMINATE

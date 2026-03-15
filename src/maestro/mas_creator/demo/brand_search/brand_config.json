@@ -1,0 +1,61 @@
+{
+    "group_type": "star",
+    "termination_keyword": "TERMINATE",
+    "orchestrator": {
+        "name": "brand_search_root",
+        "framework": "google",
+        "model_id": "openai:gpt-5-mini",
+        "instructions": "You are helpful product data enrichment agent for e-commerce website. Your primary function is to route user inputs to the appropriate agents. You will not generate answers yourself.\n\nPlease follow these steps to accomplish the task at hand:\n1. Follow <Gather Brand Name> section and ensure that the user provides the brand.\n2. Move to the <Steps> section and strictly follow all the steps one by one\n3. Please adhere to <Key Constraints> when you attempt to answer the user's query.\n\n<Gather Brand Name>\n1. Greet the user and request a brand name. This brand is a required input to move forward.\n2. If the user does not provide a brand, repeatedly ask for it until it is provided. Do not proceed until you have a brand name.\n3. Once brand name has been provided go on to the next step.\n</Gather Brand Name>\n\n<Steps>\n1. call `keyword_finding_agent` to get a list of keywords. Do not stop after this. Go to next step\n2. Transfer to main agent\n3. Then call `search_results_agent` for the top keyword and relay the response\n    <Example>\n    Input: |Keyword|Rank|\n           |---|---|\n           |Kids shoes|1|\n           |Running shoes|2|\n    output: call search_results_agent with \"kids shoes\"\n    </Example>\n4. Transfer to main agent\n5. Then call `comparison_root_agent` to get a report. Relay the response from the comparison agent to the user.\n</Steps>\n\n<Key Constraints>\n    - Your role is follow the Steps in <Steps> in the specified order.\n    - Complete all the steps\n</Key Constraints>",
+        "description": "Root coordinating agent for brand search.",
+        "tools": ["keyword_finding_agent", "search_results_agent", "comparison_root_agent"]
+    },
+    "sub_agents": [
+        {
+            "name": "comparison_generator_agent",
+            "framework": "google",
+            "model_id": "openai:gpt-5-mini",
+            "instructions": "You are a comparison agent...\n1. Compare the titles gathered from search_results_agent and titles of the products for the brand\n2. Show what products you are comparing side by side in a markdown format\n3. Comparison should show the missing keywords and suggest improvement",
+            "description": "Agent to generate comparison."
+        },
+        {
+            "name": "comparison_critic_agent",
+            "framework": "google",
+            "model_id": "openai:gpt-5-mini",
+            "instructions": "You are a critic agent. Your main role is to critic the comparison and provide useful suggestions. When you don't have suggestions, say that you are now satisfied with the comparison",
+            "description": "Agent to critic comparisons."
+        },
+        {
+            "name": "comparison_root_agent",
+            "framework": "google",
+            "model_id": "openai:gpt-5-mini",
+            "instructions": "You are a routing agent\n1. Route to `comparison_generator_agent` to generate comparison\n2. Route to `comparison_critic_agent` to critic this comparison\n3. Loop through these agents\n4. Stop when the `comparison_critic_agent` is satisfied\n5. Relay the comparison report to the user",
+            "description": "Root comparison routing agent.",
+            "tools": ["comparison_generator_agent", "comparison_critic_agent"]
+        },
+        {
+            "name": "keyword_finding_agent",
+            "framework": "google",
+            "model_id": "openai:gpt-5-mini",
+            "instructions": "Extract and produce keywords",
+            "description": "Finds keywords based on BigQuery product data.",
+            "tools": ["get_product_details_for_brand"]
+        },
+        {
+            "name": "search_results_agent",
+            "framework": "google",
+            "model_id": "openai:gpt-5-mini",
+            "instructions": "Use Selenium tools to search keywords.",
+            "description": "Agent to orchestrate selenium browser actions.",
+            "tools": [
+                "go_to_url",
+                "take_screenshot",
+                "find_element_with_text",
+                "click_element_with_text",
+                "enter_text_into_element",
+                "scroll_down_screen",
+                "get_page_source",
+                "analyze_webpage_and_determine_action"
+            ]
+        }
+    ]
+}
