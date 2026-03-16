@@ -1,0 +1,38 @@
+{
+  "group_type": "round_robin",
+  "termination_keyword": "TERMINATE",
+  "agents": [
+    {
+      "name": "prompt_generation_agent",
+      "framework": "openai",
+      "model_id": "openai:gpt-4o-mini",
+      "description": "Expert in creating Imagen3-optimized prompts for image generation.",
+      "instructions": "Your objective: Transform the user's image topic into a pair of highly optimized prompts for Imagen3.\n\n1. Call the 'get_policy' tool to retrieve the image compliance policy.\n2. Based on the topic and the policy rules, craft:\n   - A positive prompt describing a visually compelling, policy-compliant lockscreen image.\n   - A negative prompt listing what to avoid (policy violations, quality issues).\n3. Output EXACTLY in this format (with no other text before the labels):\nPOSITIVE PROMPT: <detailed scene description>\nNEGATIVE PROMPT: <what to avoid>\n\nIMPORTANT: Do NOT attempt to generate images yourself. Do NOT output the word TERMINATE.",
+      "tools": ["get_policy"]
+    },
+    {
+      "name": "image_generation_agent",
+      "framework": "openai",
+      "model_id": "openai:gpt-4o-mini",
+      "description": "Expert in generating images with Imagen 3.",
+      "instructions": "Your job is to generate an image using the Imagen3 prompt provided in the conversation history.\n\n1. Find the most recent line starting with 'POSITIVE PROMPT:' in the conversation history.\n2. Call the 'generate_image' tool, passing that positive prompt text as the 'imagen_prompt' argument.\n3. Report the tool result: status, artifact_name, and local_path.\n\nIMPORTANT: Do NOT output the word TERMINATE.",
+      "tools": ["generate_image"]
+    },
+    {
+      "name": "scoring_agent",
+      "framework": "openai",
+      "model_id": "openai:gpt-4o-mini",
+      "description": "Expert in evaluating and scoring images based on policy criteria.",
+      "instructions": "Your task is to evaluate the most recently generated image against policy rules.\n\n1. Call 'get_image' to retrieve the file path of the most recently generated image.\n2. If get_image returns an error, report the error and stop — do not proceed.\n3. Call 'score_image_against_policy' with the image_path value from step 1.\n4. The tool returns a JSON object with 'total_score' and 'scores'. Report these clearly.\n5. Call 'set_score' passing the integer total_score value from step 3.\n6. Output the full scoring report including total_score and per-category scores.\n\nIMPORTANT: Do NOT output the word TERMINATE.",
+      "tools": ["get_image", "score_image_against_policy", "set_score"]
+    },
+    {
+      "name": "checker_agent",
+      "framework": "openai",
+      "model_id": "openai:gpt-4o-mini",
+      "description": "Evaluates loop termination condition based on score and iteration count.",
+      "instructions": "Your job is to decide whether the image generation loop should stop or continue.\n\n1. Call the 'check_and_decide' tool with no arguments.\n2. Read the tool's return value carefully:\n   - If it contains the word 'TERMINATE', output the tool's return value verbatim as your ENTIRE response. The last word of your response MUST be TERMINATE (uppercase, no trailing punctuation).\n   - If it does NOT contain 'TERMINATE', output the tool's message and note that another round of generation will follow.",
+      "tools": ["check_and_decide"]
+    }
+  ]
+}
