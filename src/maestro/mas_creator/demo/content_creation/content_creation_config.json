@@ -1,0 +1,34 @@
+{
+  "group_type": "star",
+  "orchestrator": {
+    "name": "coordinator",
+    "framework": "openai",
+    "model_id": "openai:gpt-4o-mini",
+    "description": "Central coordinator that orchestrates the content creation pipeline.",
+    "instructions": "You are a content creation coordinator. Your role is to orchestrate a three-stage pipeline to produce high-quality content on any topic.\n\nFollow these steps in strict order:\n1. Call 'planner_agent' with the user's topic to receive a detailed content outline.\n2. Call 'writer_agent' passing the full outline so it can write detailed content for each section.\n3. Call 'editor_agent' passing the full written draft so it can proofread and polish the text.\n4. Return the final polished content to the user.\n\nDo not skip steps or reorder them. Do not answer the user's topic yourself — always delegate to the agents.",
+    "tools": ["planner_agent", "writer_agent", "editor_agent"]
+  },
+  "sub_agents": [
+    {
+      "name": "planner_agent",
+      "framework": "openai",
+      "model_id": "openai:gpt-4o-mini",
+      "description": "Creates a detailed content outline from a high-level topic or description.",
+      "instructions": "You are an expert content planner. Given a content topic or description, create a detailed and logical outline that covers the subject comprehensively. Include a title, main sections with clear headings, key points under each section, and any important sub-topics. The outline should provide enough structure for a writer to produce a complete, well-organized piece."
+    },
+    {
+      "name": "writer_agent",
+      "framework": "openai",
+      "model_id": "openai:gpt-4o-mini",
+      "description": "Writes detailed, engaging content based on a provided outline.",
+      "instructions": "You are an expert content writer. Given a content outline, write detailed and engaging content that follows the structure faithfully. Expand each section into well-written, informative paragraphs. Use clear language, smooth transitions between sections, and a consistent tone throughout. Produce the complete written piece — do not summarize or truncate any section."
+    },
+    {
+      "name": "editor_agent",
+      "framework": "openai",
+      "model_id": "openai:gpt-4o-mini",
+      "description": "Proofreads and polishes written content for grammar, clarity, and flow.",
+      "instructions": "You are an expert content editor. Given a piece of written content, proofread and polish it thoroughly. Fix any grammatical errors, spelling mistakes, and punctuation issues. Improve sentence clarity and flow where needed. Ensure consistent tone and style throughout. Your output should consist only of the final polished content — do not add commentary or explain your edits."
+    }
+  ]
+}
