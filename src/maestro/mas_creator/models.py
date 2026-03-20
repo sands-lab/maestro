@@ -33,6 +33,8 @@ class AgentInput(BaseModel):
             completion time (e.g. ``{"temperature": 0.7}``).
         agent_args: Optional extra keyword arguments forwarded to the
             underlying framework's agent constructor.
+        human_input: If ``True``, auto-registers a single-argument
+            ``human_input(query: str)`` tool for this agent.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -83,6 +85,13 @@ class AgentInput(BaseModel):
     agent_args: dict[str, Any] | None = Field(
         default=None,
         description="Extra arguments forwarded to the framework agent constructor.",
+    )
+    human_input: bool = Field(
+        default=False,
+        description=(
+            "Whether to auto-register a single-argument human_input(query) "
+            "callable tool for this agent."
+        ),
     )
 
 

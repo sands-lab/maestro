@@ -120,8 +120,22 @@ class StarGroup:
         self.orchestrator = orchestrator
         self.sub_agents = sub_agents
         self._tool_callables = self._wrap_sub_agents()
+        self._context: list[dict[str, str]] = []
         # Attach wrapped callables to the orchestrator's tool list at runtime
         self.orchestrator.config.tools.extend(self._tool_callables)
+
+    def reset(self) -> None:
+        """Reset conversation context so the group can be reused for a new session."""
+        self._context = []
+
+    def _format_context(self) -> str:
+        """Render the shared context as a chat transcript for the orchestrator."""
+        lines: list[str] = []
+        for msg in self._context:
+            role = msg.get("role", "unknown").upper()
+            content = msg.get("content", "")
+            lines.append(f"[{role}]: {content}")
+        return "\n\n".join(lines)
 
     def _wrap_sub_agents(self) -> list:
         """Return a list of async callables, one per sub-agent."""
@@ -149,8 +163,18 @@ class StarGroup:
         Returns:
             Final output produced by the orchestrator.
         """
-        trace = await self.orchestrator.run_async(task)
-        return str(trace.final_output)
+        self._context.append({"role": "user", "content": task})
+
+        # Keep first turn backward-compatible while enabling multi-turn memory.
+        if len(self._context) == 1:
+            prompt = task
+        else:
+            prompt = self._format_context()
+
+        trace = await self.orchestrator.run_async(prompt)
+        output = str(trace.final_output)
+        self._context.append({"role": "assistant", "content": output})
+        return output
 
 
 # ---------------------------------------------------------------------------

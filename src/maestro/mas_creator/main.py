@@ -8,6 +8,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from maestro.mas_creator.builder import GroupBuilder
 
+EXIT_COMMANDS = {"exit", "quit", "q"}
+
 async def create_mas(config_path: str | Path, tools_path: str | Path | None = None):
     """
     Create a multi-agent system (MAS) from a JSON config file and an optional tools file.
@@ -44,8 +46,14 @@ async def main():
     parser.add_argument(
         "--task",
         type=str,
-        default="Start conversation",
-        help="The initial task or prompt to start the multi-agent system."
+        default=None,
+        help="Optional initial task. If omitted, the program reads it from console input."
+    )
+    parser.add_argument(
+        "--interactive",
+        "-i",
+        action="store_true",
+        help="Run in interactive multi-turn mode (type 'exit' to stop).",
     )
     
     args = parser.parse_args()
@@ -63,9 +71,49 @@ async def main():
 
     group = await create_mas(config_path, tools_path)
     print(f"Success! Built group: {group.__class__.__name__}")
-    
-    print(f"\nTask: {args.task}\n{'-' * 60}")
-    result = await group.run(args.task)
+
+    if args.interactive:
+        print("\nInteractive session started. Type 'exit' to stop.")
+        pending_input = args.task
+        while True:
+            if pending_input is None:
+                try:
+                    user_input = input("\nUser: ").strip()
+                except EOFError:
+                    break
+                except KeyboardInterrupt:
+                    print("\nInterrupted.")
+                    break
+            else:
+                user_input = pending_input.strip()
+                pending_input = None
+
+            if not user_input:
+                continue
+            if user_input.lower() in EXIT_COMMANDS:
+                break
+
+            print(f"\nTask: {user_input}\n{'-' * 60}")
+            result = await group.run(user_input)
+            print(f"\nAssistant:\n{result}")
+        return
+
+    task = args.task
+    if task is None:
+        try:
+            task = input("Enter task: ").strip()
+        except EOFError:
+            print(
+                "Error: No --task provided and no console input is available.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        if not task:
+            print("Error: Task cannot be empty.", file=sys.stderr)
+            sys.exit(1)
+
+    print(f"\nTask: {task}\n{'-' * 60}")
+    result = await group.run(task)
     
     print(f"\n{'=' * 60}\nFinal output:\n{result}")
 

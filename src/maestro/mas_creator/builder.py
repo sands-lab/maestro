@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from any_agent import AgentConfig, AgentFramework, AnyAgent
+from any_agent.tools import send_console_message
 
 from .controllers import HandoffGroup, RoundRobinGroup, StarGroup
 from .models import AgentInput, GroupInput
@@ -48,11 +49,24 @@ class AgentBuilder:
     """
 
     @staticmethod
+    def human_input(query: str) -> str:
+        """Ask the user a question in console and return the response."""
+        return send_console_message(user="User", query=query)
+
+    @staticmethod
+    def _build_tools(agent_input: AgentInput) -> list[Any]:
+        """Build the final tool list for an agent, including optional human-input tooling."""
+        tools = list(agent_input.tools)
+        if agent_input.human_input and AgentBuilder.human_input not in tools:
+            tools.append(AgentBuilder.human_input)
+        return tools
+
+    @staticmethod
     def _make_agent_config(agent_input: AgentInput) -> AgentConfig:
         """Translate an :class:`AgentInput` into an :class:`any_agent.AgentConfig`."""
         return AgentConfig(
             model_id=agent_input.model_id,
-            tools=agent_input.tools,
+            tools=AgentBuilder._build_tools(agent_input),
             name=agent_input.name,
             instructions=agent_input.instructions,
             description=agent_input.description,

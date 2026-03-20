@@ -18,7 +18,7 @@ It provides:
 
 ## Quick Start (CLI)
 
-Run a group from a JSON config:
+Run a group from a JSON config (single turn):
 
 ```bash
 python src/maestro/mas_creator/main.py path/to/config.json --task "Start conversation"
@@ -33,6 +33,16 @@ python src/maestro/mas_creator/main.py path/to/config.json \
 ```
 
 `tools.py` public functions are auto-loaded and mapped by function name.
+
+Run in interactive multi-turn mode:
+
+```bash
+python src/maestro/mas_creator/main.py path/to/config.json \
+  --tools path/to/tools.py \
+  --interactive
+```
+
+In interactive mode, type `exit` / `quit` / `q` to end the session.
 
 ## Config Shape
 
@@ -52,7 +62,11 @@ Agent fields:
 - `framework` (supported by `any-agent`, e.g. `openai`, `google`, `langchain`, `llama_index`, `agno`, `smolagents`, `tinyagent`)
 - `model_id` (provider-prefixed, e.g. `openai:gpt-4o-mini`)
 - `instructions` / `description`
-- optional `tools`, `api_key`, `api_base`, `model_args`, `agent_args`
+- optional `tools`, `api_key`, `api_base`, `model_args`, `agent_args`, `human_input`
+
+`human_input` behavior:
+- If `human_input: true`, `mas_creator` auto-registers a single-argument tool `human_input(query: str) -> str` for that agent.
+- Internally, this wrapper calls `any_agent.tools.send_console_message(user="User", query=query)`.
 
 ## Minimal Examples
 
@@ -167,3 +181,5 @@ Available demo configs in this repo:
 - `handoff` is turn-based routing, not true parallel execution.
 - In `handoff`, agents should be prompted to always emit either `HANDOFF:<agent_name>` or `TERMINATE`.
 - If an unknown handoff target is emitted, execution raises an error.
+- `star` now keeps in-memory conversation history across successive `group.run(...)` calls on the same instance.
+- Use `group.reset()` to clear stored context before starting a fresh session.
