@@ -213,6 +213,7 @@ class HandoffGroup:
 
     DEFAULT_HANDOFF_PREFIX = "HANDOFF:"
     DEFAULT_MAX_TURNS = 50
+    LOOP_BREAK_WINDOW = 4
 
     def __init__(
         self,
@@ -235,10 +236,14 @@ class HandoffGroup:
         self.max_turns = max_turns
         self.verbose = verbose
         self._context: list[dict[str, str]] = []
+        self._handoff_history: list[tuple[str, str]] = []
+        self._agent_turn_counts: dict[str, int] = {name: 0 for name in agents}
 
     def reset(self) -> None:
         """Reset conversation context so the group can handle a new task."""
         self._context = []
+        self._handoff_history = []
+        self._agent_turn_counts = {name: 0 for name in self.agents}
 
     def _format_context(self) -> str:
         """Render the conversation context as human-readable text.
@@ -280,6 +285,23 @@ class HandoffGroup:
                 return next_name, body
         return None, output
 
+    def _is_two_agent_loop(self, history_with_candidate: list[tuple[str, str]]) -> bool:
+        """Return True when the last 4 transitions form A->B->A->B."""
+        if len(history_with_candidate) < self.LOOP_BREAK_WINDOW:
+            return False
+        t1, t2, t3, t4 = history_with_candidate[-4:]
+        return t1 == t3 and t2 == t4 and t1[0] == t2[1] and t1[1] == t2[0]
+
+    def _pick_fallback_agent(self, current_name: str, requested_next: str) -> str | None:
+        """Pick an alternative target to break a repeated two-agent loop."""
+        candidates = [
+            name for name in self.agents if name not in {current_name, requested_next}
+        ]
+        if not candidates:
+            return None
+        candidates.sort(key=lambda name: (self._agent_turn_counts.get(name, 0), name))
+        return candidates[0]
+
     async def run(self, task: str) -> str:
         """Run the handoff loop starting from ``entry_agent_name``.
 
@@ -294,7 +316,6 @@ class HandoffGroup:
             ValueError: If an agent requests a handoff to an unknown agent name.
         """
         self._context.append({"role": "user", "content": task})
-
         current_name = self.entry_agent_name
         output = ""
         turn = 0
@@ -308,6 +329,9 @@ class HandoffGroup:
             turn += 1
 
             agent = self.agents[current_name]
+            self._agent_turn_counts[current_name] = (
+                self._agent_turn_counts.get(current_name, 0) + 1
+            )
             if self.verbose:
                 print(f"[Turn {turn}] Agent: {current_name}")
 
@@ -321,8 +345,8 @@ class HandoffGroup:
             # Record this turn in the shared context.
             # Strip the HANDOFF directive line so downstream agents (especially the
             # planner) do not get confused by seeing "HANDOFF:xxx" in past messages.
-            _, body = self._parse_handoff(output)
-            context_content = body if body.strip() else output
+            next_name, body = self._parse_handoff(output)
+            context_content = body if body.strip() else "[No content; handoff directive only.]"
             self._context.append({
                 "role": "assistant",
                 "content": f"[{current_name}]: {context_content}",
@@ -334,15 +358,24 @@ class HandoffGroup:
                     print(f"[Turn {turn}] Termination keyword detected. Stopping.")
                 break
 
-            # Parse handoff directive from any line in the output
-            next_name, _body = self._parse_handoff(output)
-
             if next_name is not None:
                 if next_name not in self.agents:
                     raise ValueError(
                         f"Agent '{current_name}' requested handoff to unknown agent "
                         f"'{next_name}'. Available: {list(self.agents.keys())}"
                     )
+                candidate_history = self._handoff_history + [(current_name, next_name)]
+                if self._is_two_agent_loop(candidate_history):
+                    fallback_name = self._pick_fallback_agent(current_name, next_name)
+                    if fallback_name is not None:
+                        if self.verbose:
+                            print(
+                                "         Loop detected (A->B->A->B). "
+                                f"Rerouting {current_name} -> {fallback_name} "
+                                f"instead of {next_name}."
+                            )
+                        next_name = fallback_name
+                self._handoff_history.append((current_name, next_name))
                 if self.verbose:
                     print(f"         Handoff → {next_name}")
                 current_name = next_name
