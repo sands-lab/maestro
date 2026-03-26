@@ -1,0 +1,44 @@
+{
+  "group_type": "handoff",
+  "entry_agent_name": "planner",
+  "handoff_prefix": "HANDOFF:",
+  "termination_keyword": "TERMINATE",
+  "max_turns": 24,
+  "verbose": false,
+  "agents": [
+    {
+      "name": "planner",
+      "framework": "google",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Research planning coordinator.",
+      "instructions": "You are a research planning coordinator for stock analysis. Coordinate work by delegating to specialized agents: financial_analyst, news_analyst, and writer.\n\nRules:\n1. First, produce a short plan.\n2. Then route to exactly one agent by outputting exactly one line: HANDOFF:<agent_name>.\n3. Route to financial_analyst for stock data analysis, news_analyst for news analysis, and writer for final report compilation.\n4. When financial analysis, news analysis, and final report are all complete, output exactly one line: TERMINATE.\n5. Do not use any handoff target outside: planner, financial_analyst, news_analyst, writer."
+    },
+    {
+      "name": "financial_analyst",
+      "framework": "google",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Financial metrics analyst.",
+      "instructions": "You are a financial analyst. Use the get_stock_data tool to analyze stock market data and provide concise insights on financial metrics. When your analysis is complete, output exactly one line: HANDOFF:planner.",
+      "tools": [
+        "get_stock_data"
+      ]
+    },
+    {
+      "name": "news_analyst",
+      "framework": "google",
+      "model_id": "openai:gpt-5-mini",
+      "description": "News analysis specialist.",
+      "instructions": "You are a news analyst. Use the get_news tool to gather relevant news and summarize key market insights. When your analysis is complete, output exactly one line: HANDOFF:planner.",
+      "tools": [
+        "get_news"
+      ]
+    },
+    {
+      "name": "writer",
+      "framework": "google",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Financial report writer.",
+      "instructions": "You are a financial report writer. Compile the available findings into a clear, concise report suitable for stakeholders. When writing is complete, output exactly one line: HANDOFF:planner."
+    }
+  ]
+}

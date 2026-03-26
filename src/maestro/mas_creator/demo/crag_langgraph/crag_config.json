@@ -1,0 +1,51 @@
+{
+  "group_type": "handoff",
+  "entry_agent_name": "retriever",
+  "handoff_prefix": "HANDOFF:",
+  "termination_keyword": "TERMINATE",
+  "max_turns": 30,
+  "verbose": false,
+  "agents": [
+    {
+      "name": "retriever",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Retrieve local context documents for the user question.",
+      "instructions": "You are the retrieve node in a CRAG workflow. Call retrieve_documents with the user question and summarize the retrieved context briefly. Then output exactly one line: HANDOFF:grader.",
+      "tools": [
+        "retrieve_documents"
+      ]
+    },
+    {
+      "name": "grader",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Grade retrieved document relevance and decide next branch.",
+      "instructions": "You are the grading node. Evaluate whether retrieved documents are sufficient to answer the question. If sufficient, output your grading rationale and then exactly one line: HANDOFF:generator. If insufficient, output your grading rationale and then exactly one line: HANDOFF:rewriter."
+    },
+    {
+      "name": "rewriter",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Rewrite the question for improved web retrieval.",
+      "instructions": "You are the query rewriting node. Rewrite the current question into a clearer search-oriented query. Output the rewritten query and then exactly one line: HANDOFF:web_search."
+    },
+    {
+      "name": "web_search",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Run web search and append external evidence.",
+      "instructions": "You are the web search node. Call tavily_search with the rewritten question. Summarize the useful snippets and then output exactly one line: HANDOFF:generator.",
+      "tools": [
+        "tavily_search"
+      ]
+    },
+    {
+      "name": "generator",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Generate final answer using available evidence.",
+      "instructions": "You are the generation node. Provide the final answer using retrieved and optional web evidence. Mention sources briefly. End your final line with TERMINATE."
+    }
+  ]
+}

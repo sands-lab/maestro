@@ -1,0 +1,40 @@
+{
+  "group_type": "handoff",
+  "entry_agent_name": "cache_router",
+  "handoff_prefix": "HANDOFF:",
+  "termination_keyword": "TERMINATE",
+  "max_turns": 18,
+  "verbose": false,
+  "agents": [
+    {
+      "name": "cache_router",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Semantic cache gate for FAQ questions.",
+      "instructions": "You are the cache routing node. Call check_semantic_cache with the user question. If cache_hit is true, return the cached answer and end with TERMINATE. If cache_hit is false, briefly report cache miss and output exactly one line: HANDOFF:faq_responder.",
+      "tools": [
+        "check_semantic_cache"
+      ]
+    },
+    {
+      "name": "faq_responder",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Generate answer for cache miss and pass to cache writer.",
+      "instructions": "You are the FAQ responder node. For a cache miss, call answer_faq_question using the user's original question. Output the final answer text first, then output exactly one line: HANDOFF:cache_writer.",
+      "tools": [
+        "answer_faq_question"
+      ]
+    },
+    {
+      "name": "cache_writer",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Write newly generated answers back to semantic cache.",
+      "instructions": "You are the cache writeback node. Read the original user question and the answer from faq_responder in the conversation context. Call store_semantic_cache(question, answer), then return the final answer and end with TERMINATE.",
+      "tools": [
+        "store_semantic_cache"
+      ]
+    }
+  ]
+}

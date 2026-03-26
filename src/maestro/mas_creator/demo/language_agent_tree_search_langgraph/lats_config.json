@@ -1,0 +1,35 @@
+{
+  "group_type": "handoff",
+  "entry_agent_name": "selector",
+  "handoff_prefix": "HANDOFF:",
+  "termination_keyword": "TERMINATE",
+  "max_turns": 30,
+  "verbose": false,
+  "agents": [
+    {
+      "name": "selector",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Select the most promising trajectory branch to expand next.",
+      "instructions": "You are the selection node in language-agent-tree-search. Review prior candidate branches and reflection scores, then choose one branch to expand. Provide a short selection rationale and then output exactly one line: HANDOFF:generator."
+    },
+    {
+      "name": "generator",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Generate candidate continuations and gather evidence using tools.",
+      "instructions": "You are the generation node. Produce several candidate continuations for the selected branch. Use reference_lookup for dataset evidence and tavily_search for web evidence when needed. Summarize generated candidates and evidence, then output exactly one line: HANDOFF:reflector.",
+      "tools": [
+        "reference_lookup",
+        "tavily_search"
+      ]
+    },
+    {
+      "name": "reflector",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Score candidates, critique quality, and decide whether solved.",
+      "instructions": "You are the reflection node. Score candidate quality on a 0-10 scale, provide critique, and decide whether a complete solution is found. If solved, provide the final answer and end with TERMINATE. If not solved, provide reflection and then output exactly one line: HANDOFF:selector."
+    }
+  ]
+}

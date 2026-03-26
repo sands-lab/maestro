@@ -1,0 +1,37 @@
+{
+  "group_type": "handoff",
+  "entry_agent_name": "expander",
+  "handoff_prefix": "HANDOFF:",
+  "termination_keyword": "TERMINATE",
+  "max_turns": 30,
+  "verbose": false,
+  "agents": [
+    {
+      "name": "expander",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Generate candidate reverse-polish equations for the current puzzle.",
+      "instructions": "You are the expansion node in a Tree-of-Thoughts search for the Game of 24. Generate multiple candidate reverse-polish (postfix) equations using only the puzzle numbers exactly once. Output the candidate token lists clearly, then output exactly one line: HANDOFF:scorer."
+    },
+    {
+      "name": "scorer",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Score candidate equations with deterministic reward logic.",
+      "instructions": "You are the scoring node. Extract the puzzle numbers and candidate token lists from context, then call score_candidates(problem, candidates). Report scored results and then output exactly one line: HANDOFF:pruner.",
+      "tools": [
+        "score_candidates"
+      ]
+    },
+    {
+      "name": "pruner",
+      "framework": "langchain",
+      "model_id": "openai:gpt-5-mini",
+      "description": "Prune beams and decide continue vs terminate.",
+      "instructions": "You are the pruning node. Call prune_candidates with current scored_candidates and search settings (beam_size, threshold, depth, max_depth). If terminate is true, return the best candidate and end with TERMINATE. If terminate is false, summarize retained candidates and output exactly one line: HANDOFF:expander.",
+      "tools": [
+        "prune_candidates"
+      ]
+    }
+  ]
+}
